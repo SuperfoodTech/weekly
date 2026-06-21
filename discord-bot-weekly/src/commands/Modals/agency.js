@@ -823,7 +823,7 @@ module.exports = {
                 if (stateChanged || (now - lastUpdate > 3000)) {
                     if (now - lastUpdate > 1500) {
                         lastUpdate = now;
-                        await progressMsg.edit({
+                        await finalInteraction.editReply({
                             embeds: [buildProgressEmbed(currentStep, logHistory.join('\n'))],
                             components: [cancelRow]
                         }).catch(() => { });
@@ -925,7 +925,7 @@ module.exports = {
                         .setTimestamp();
 
                     try {
-                        await progressMsg.edit({
+                        await finalInteraction.editReply({
                             embeds: [successEmbed],
                             files: attachments,
                             components: []
@@ -955,7 +955,7 @@ module.exports = {
                         .setTimestamp();
 
                     try {
-                        await progressMsg.edit({
+                        await finalInteraction.editReply({
                             embeds: [failedEmbed],
                             components: []
                         });
@@ -977,7 +977,7 @@ module.exports = {
                     .setTimestamp();
 
                 try {
-                    await progressMsg.edit({
+                    await finalInteraction.editReply({
                         embeds: [errorEmbed],
                         components: []
                     });
