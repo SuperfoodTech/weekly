@@ -1,0 +1,17 @@
+.env
+.env copy
+*.pyc
+__pycache__/
+.DS_Store
+
+# Google Credentials and Tokens
+**/credentials.json
+**/token.pickle
+
+# Virtual Environment
+.venv/
+**/.venv/
+
+# Local data files
+*.xlsx
+*.csv

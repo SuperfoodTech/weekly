@@ -1,0 +1,10 @@
+{
+  "status": "ERROR_NOTIF",
+  "platform": "Shopee",
+  "merchant": "RM Minang Agung",
+  "error_type": "SYSTEM_ERROR",
+  "message": "Nama outlet 'RM Minang Agung' tidak terdaftar atau belum ditambahkan (invite) di akun Shopee ini.",
+  "phone": "",
+  "created_at": "2026-06-17 11:19:26",
+  "channel_id": ""
+}

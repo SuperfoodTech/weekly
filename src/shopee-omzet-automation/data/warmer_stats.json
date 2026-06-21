@@ -1,0 +1,26 @@
+{
+  "period_start": "2026-06-11T13:25:44.402135",
+  "stuck_restarts": 9,
+  "docker_restarts": 46,
+  "down_events": [
+    {
+      "ts": "2026-06-12T15:17:38.486366",
+      "username": "auto7304_",
+      "reason": "Browser Google Chrome gagal terbuka atau tertutup otomatis (biasanya karena masalah memori server atau ChromeDriver crash)."
+    },
+    {
+      "ts": "2026-06-17T08:24:52.157676",
+      "username": "auto7303",
+      "reason": "Terjadi kesalahan sistem yang tidak terduga saat memproses halaman."
+    }
+  ],
+  "last_error": {
+    "ts": "2026-06-17T08:24:52.157676",
+    "username": "auto7303",
+    "reason": "Terjadi kesalahan sistem yang tidak terduga saat memproses halaman."
+  },
+  "last_stuck_at": "2026-06-12T13:34:57.878643",
+  "total_cycles": 776,
+  "total_success": 2303,
+  "total_failed": 2
+}

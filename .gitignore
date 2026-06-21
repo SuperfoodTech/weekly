@@ -45,3 +45,41 @@ VB/data/chrome_profile/
 VB/data/chrome_profile_*/
 VB/data/chrome_profiles/
 VB/data/*_cache.csv
+
+# Generic Chrome profile, cache, and DB ignores
+**/chrome_profile*/
+**/chrome_profiles*/
+**/browser_data/
+**/GrShaderCache/
+**/GraphiteDawnCache/
+**/ShaderCache/
+**/Local State
+**/first_party_sets.db
+**/segmentation_platform/
+**/shopee_profile*/
+**/DawnGraphiteCache/
+**/DawnWebGPUCache/
+**/Extension State/
+**/GCM Store/
+**/IndexedDB/
+**/Local Storage/
+**/Session Storage/
+**/Sessions/
+**/Site Characteristics Database/
+**/Sync Data/
+**/TransportSecurity
+**/WebStorage/
+**/shared_proto_db/
+**/Search Logos/
+**/Dictionaries/
+**/Extension Rules/
+**/Extension Scripts/
+**/Preferences
+**/History*
+**/Favicons*
+**/DIPS*
+**/BrowsingTopicsState*
+**/Reporting and NEL
+**/Network Action Predictor
+**/Network Persistent State
+

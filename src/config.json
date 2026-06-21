@@ -1,0 +1,7 @@
+{
+  "headless_grab": false,
+  "headless_shopee": false,
+  "headless_gofood": false,
+  "headless_vb": true,
+  "max_concurrency": 1
+}
