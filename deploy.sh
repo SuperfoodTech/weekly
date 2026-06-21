@@ -11,7 +11,7 @@ echo "=== Pulling latest changes from GitHub ==="
 git pull
 
 echo "=== Restarting weekly-discord-bot service ==="
-sudo systemctl restart weekly-discord-bot
+sudo -S systemctl restart weekly-discord-bot
 
 echo "=== Checking service status ==="
-sudo systemctl status weekly-discord-bot --no-pager
+sudo -S systemctl status weekly-discord-bot --no-pager
