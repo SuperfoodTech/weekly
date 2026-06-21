@@ -1,0 +1,47 @@
+# Root gitignore for weekly monorepo
+
+# Virtual Environments & Dependencies
+.venv/
+venv/
+ENV/
+env/
+node_modules/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Reports, Downloads, Logs, and Spreadsheets
+laporan/
+downloads/
+logs/
+*.csv
+*.xlsx
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+.git_backup/
+*.git_backup/
+
+# Credentials & Secrets
+.env
+.env.*
+*credentials*.json
+session.json
+session_*.json
+sessions/
+shopee/sessions/
+grab/sessions/
+
+# Specific ignores for agency and VB folders to avoid pushing large local chrome profiles
+agency/data/chrome_profile_*
+agency/data/*_cache.csv
+
+VB/data/chrome_profile/
+VB/data/chrome_profile_*/
+VB/data/chrome_profiles/
+VB/data/*_cache.csv

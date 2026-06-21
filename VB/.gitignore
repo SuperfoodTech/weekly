@@ -1,0 +1,31 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Reports / Outputs
+laporan/
+downloads/
+logs/
+*.csv
+*.xlsx
+
+# Credentials & Secrets
+.env
+*credentials*.json
+session.json
+session_*.json
+sessions/
+shopee/sessions/
+grab/sessions/
+data/chrome_profile/
+data/chrome_profile_*/
+data/chrome_profiles/
+data/*_cache.csv

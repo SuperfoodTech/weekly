@@ -1,0 +1,58 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Reports / Outputs
+laporan/
+downloads/
+logs/
+*.csv
+*.xlsx
+
+# Credentials & Secrets
+.env
+*credentials*.json
+session.json
+session_*.json
+sessions/
+shopee/sessions/
+grab/sessions/
+data/chrome_profile_*/**/Cache/
+data/chrome_profile_*/**/Code Cache/
+data/chrome_profile_*/**/DawnCache/
+data/chrome_profile_*/**/GPUCache/
+data/chrome_profile_*/**/Crashpad/
+data/chrome_profile_*/Singleton*
+data/chrome_profile_*/lockfile
+data/*_cache.csv
+
+# Allow weekly session and chrome profile
+!data/session.json
+!data/chrome_profile/
+!data/chrome_profile/**
+
+# Ignore bloat inside chrome_profile
+data/chrome_profile/**/Cache/
+data/chrome_profile/**/Code Cache/
+data/chrome_profile/**/DawnCache/
+data/chrome_profile/**/GPUCache/
+data/chrome_profile/**/Crashpad/
+data/chrome_profile/**/Service Worker/
+data/chrome_profile/optimization_guide_model_store/
+data/chrome_profile/BrowserMetrics*/
+data/chrome_profile/**/Singleton*
+data/chrome_profile/**/lockfile
+data/chrome_profile/**/DevToolsActivePort
+
+# Ignore win profiles
+data/chrome_profile_win/
+data/chrome_profile_win_backup/
+
