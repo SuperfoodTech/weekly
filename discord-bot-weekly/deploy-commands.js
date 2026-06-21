@@ -46,11 +46,14 @@ const rest = new REST({ version: '10' }).setToken(token);
     try {
         console.log(`Memulai proses pendaftaran ${commands.length} slash commands...`);
 
-        // Mode Guild: mendaftarkan slash command spesifik ke server tertentu (Instan)
-        // Jika ingin mendaftarkan global ke semua server, ganti bagian `Routes.applicationGuildCommands`
-        // menjadi `Routes.applicationCommands(clientId)` dan hapus argumen guildId.
+        const route = guildId 
+            ? Routes.applicationGuildCommands(clientId, guildId)
+            : Routes.applicationCommands(clientId);
+
+        console.log(`Registering commands to: ${guildId ? `Guild (${guildId})` : 'Global (all servers)'}`);
+
         const data = await rest.put(
-            Routes.applicationGuildCommands(clientId, guildId),
+            route,
             { body: commands },
         );
 
