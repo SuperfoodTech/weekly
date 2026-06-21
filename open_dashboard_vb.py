@@ -220,30 +220,30 @@ def launch_portal_browser(name):
 def main():
     print("\n" + "="*60)
     print("📋 PILIHAN PORTAL VB SHOPEE:")
-    print("1. Semua Portal (f, w, l, d)")
-    print("2. portal_f (F)")
-    print("3. portal_w (W)")
-    print("4. portal_l (L)")
-    print("5. portal_d (D)")
+    print("1. portal_f (F)")
+    print("2. portal_w (W)")
+    print("3. portal_l (L)")
+    print("4. portal_d (D)")
+    print("5. Semua Portal (f, w, l, d)")
     print("="*60)
     
     try:
-        choice = input("Pilih portal yang ingin dibuka (1-5, default 1): ").strip()
+        choice = input("Pilih portal yang ingin dibuka (1-5, default 5): ").strip()
     except (KeyboardInterrupt, EOFError):
         print("\nExiting.")
         return
 
     selected_portals = []
-    if choice == "1" or not choice:
-        selected_portals = portals
-    elif choice == "2":
+    if choice == "1":
         selected_portals = ["portal_f"]
-    elif choice == "3":
+    elif choice == "2":
         selected_portals = ["portal_w"]
-    elif choice == "4":
+    elif choice == "3":
         selected_portals = ["portal_l"]
-    elif choice == "5":
+    elif choice == "4":
         selected_portals = ["portal_d"]
+    elif choice == "5" or not choice:
+        selected_portals = portals
     else:
         print("ℹ️ Pilihan tidak valid, membuka semua portal secara default...")
         selected_portals = portals
@@ -253,7 +253,7 @@ def main():
         t = threading.Thread(target=launch_portal_browser, args=(p,), daemon=True)
         threads.append(t)
         t.start()
-        time.sleep(1.5) # stagger launch slightly to avoid high CPU load
+        time.sleep(5.0) # stagger launch to avoid high CPU load and port collision
 
     print("\n" + "="*60)
     print(f"🚀 Browser untuk {len(selected_portals)} portal VB Shopee telah dibuka!")
