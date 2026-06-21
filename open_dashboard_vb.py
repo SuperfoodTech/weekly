@@ -2,7 +2,11 @@ import os
 import sys
 import time
 import threading
+import json
 from pathlib import Path
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Add VB directory to path so core/ imports work
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'VB')))
@@ -14,6 +18,51 @@ log = get_logger("open_dashboards_vb")
 
 portals = ["portal_f", "portal_w", "portal_l", "portal_d"]
 drivers = {}
+
+def get_credentials(account_name):
+    try:
+        cred_path = Path(__file__).resolve().parent / "VB" / "shopee" / "credentials_vb.json"
+        if cred_path.exists():
+            with open(cred_path, "r") as f:
+                data = json.load(f)
+                for portal in data.get("portals", []):
+                    if portal.get("account_name") == account_name:
+                        return portal
+    except Exception as e:
+        log.warning(f"⚠️ Gagal membaca credentials_vb.json: {e}")
+    return None
+
+def autofill_login_form(driver, cred, name):
+    log.info(f"✍️ Mengisi otomatis username & password untuk VB '{name}'...")
+    try:
+        wait = WebDriverWait(driver, 10)
+        user_input = None
+        for sel in ["input[name='userName']", "input[placeholder*='handphone']", "input[placeholder*='Username']", "input[type='text']"]:
+            try:
+                el = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, sel)))
+                if el.is_displayed():
+                    user_input = el
+                    break
+            except:
+                continue
+        
+        if user_input:
+            user_input.send_keys(cred["username"])
+            
+        pass_input = None
+        for sel in ["input[type='password']", "input[placeholder='Password']"]:
+            try:
+                el = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, sel)))
+                if el.is_displayed():
+                    pass_input = el
+                    break
+            except:
+                continue
+                
+        if pass_input:
+            pass_input.send_keys(cred["password"])
+    except Exception as autofill_err:
+        log.warning(f"⚠️ Gagal mengisi otomatis credentials untuk '{name}': {autofill_err}")
 
 def launch_portal_browser(name):
     log.info(f"🌐 Membuka browser untuk VB '{name}'...")
@@ -43,9 +92,20 @@ def launch_portal_browser(name):
             
             # Refresh to apply cookies and go to dashboard
             driver.get("https://partner.shopee.co.id/food/dashboard")
+            time.sleep(3)
+            
+            # Check if redirected to login page due to expired session
+            if "login" in driver.current_url.lower():
+                log.warning(f"⚠️ Sesi tersimpan kedaluwarsa untuk VB '{name}'. Mengisi otomatis credentials...")
+                cred = get_credentials(name)
+                if cred:
+                    autofill_login_form(driver, cred, name)
         else:
             log.warning(f"⚠️ Sesi tidak ditemukan untuk VB '{name}'. Silakan login manual.")
             driver.get("https://partner.shopee.co.id/login")
+            cred = get_credentials(name)
+            if cred:
+                autofill_login_form(driver, cred, name)
 
     except Exception as e:
         log.error(f"❌ Gagal membuka browser untuk VB '{name}': {e}")
