@@ -111,8 +111,11 @@ function controlWarmer(action, onLog = console.log) {
  * @returns {Promise<{success:boolean, exitCode:number, output:string}>}
  */
 function runWeeklyPipeline(formData, onLog = () => { }) {
-    let proc;
-    const promise = new Promise(async (resolve) => {
+    const pipelineObj = {
+        promise: null,
+        proc: null
+    };
+    pipelineObj.promise = new Promise(async (resolve) => {
         const { target, platform, startDate, endDate, outlet, branch, user } = formData;
 
         const WEEKLY_DIR = getWeeklyTargetDir(target || 'agency');
@@ -161,11 +164,12 @@ function runWeeklyPipeline(formData, onLog = () => { }) {
 
         const readline = require('readline');
         
-        proc = spawn(PYTHON_EXE, args, {
+        const proc = spawn(PYTHON_EXE, args, {
             cwd: WEEKLY_DIR,
             env,
             detached: true,
         });
+        pipelineObj.proc = proc;
 
         const rlStdout = readline.createInterface({ input: proc.stdout });
         rlStdout.on('line', (line) => {
@@ -184,10 +188,10 @@ function runWeeklyPipeline(formData, onLog = () => { }) {
         const cleanupAndResolve = async (data) => {
             await controlWarmer('unpause', onLog);
             
-            if (proc && proc.pid) {
+            if (pipelineObj.proc && pipelineObj.proc.pid) {
                 try {
-                    onLog(`🧹 [CLEANUP] Cleaning up process group ${proc.pid}...`);
-                    process.kill(-proc.pid, 'SIGKILL');
+                    onLog(`🧹 [CLEANUP] Cleaning up process group ${pipelineObj.proc.pid}...`);
+                    process.kill(-pipelineObj.proc.pid, 'SIGKILL');
                 } catch (e) {
                 }
             }
@@ -212,7 +216,7 @@ function runWeeklyPipeline(formData, onLog = () => { }) {
             });
         });
     });
-    return { promise, proc };
+    return pipelineObj;
 }
 
 module.exports = { runWeeklyPipeline };

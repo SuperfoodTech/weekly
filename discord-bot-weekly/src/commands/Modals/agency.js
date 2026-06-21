@@ -131,6 +131,8 @@ async function getWeeklyOutlets(platform) {
     const appIdx = headers.indexOf('Aplikasi');
     const statusIdx = headers.indexOf('Status');
     const nameIdx = headers.indexOf('Nama Outlet');
+    const userIdx = headers.indexOf('Nama Pengguna');
+    const merchantIdx = headers.indexOf('Merchant Name');
 
     if (appIdx === -1 || statusIdx === -1 || nameIdx === -1) {
         console.error('[WEEKLY FETCH] Headers not found in GSheets gid=0:', headers);
@@ -143,7 +145,10 @@ async function getWeeklyOutlets(platform) {
         const line = lines[i].trim();
         if (!line) continue;
         const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
-        if (cols.length <= Math.max(appIdx, statusIdx, nameIdx)) continue;
+        
+        // Ensure cols has enough elements for the standard fields
+        const requiredMax = Math.max(appIdx, statusIdx, nameIdx);
+        if (cols.length <= requiredMax) continue;
 
         const app = cols[appIdx].toLowerCase();
         const status = cols[statusIdx].toLowerCase();
@@ -152,10 +157,16 @@ async function getWeeklyOutlets(platform) {
         if (!name || name === '-') continue;
         if (status !== 'live') continue;
 
+        const userVal = userIdx !== -1 && cols[userIdx] ? cols[userIdx].trim() : '';
+        const merchantVal = merchantIdx !== -1 && cols[merchantIdx] ? cols[merchantIdx].trim() : '';
+
+        const isValidGrab = app.includes('grab') && userVal !== '' && userVal !== '-';
+        const isValidShopee = app.includes('shopee') && merchantVal !== '' && merchantVal !== '-';
+
         const matchesPlatform =
-            (platform === 'all' && (app.includes('grab') || app.includes('shopee'))) ||
-            (platform === 'grab' && app.includes('grab')) ||
-            (platform === 'shopee' && app.includes('shopee'));
+            (platform === 'all' && (isValidGrab || isValidShopee)) ||
+            (platform === 'grab' && isValidGrab) ||
+            (platform === 'shopee' && isValidShopee);
 
         if (matchesPlatform) {
             outletsSet.add(name);
@@ -825,7 +836,7 @@ module.exports = {
                 }
             });
 
-            activeWeeklyProcess = pipeline.proc;
+            activeWeeklyProcess = pipeline;
 
             pipeline.promise.then(async (result) => {
                 isWeeklyJobRunning = false;
@@ -997,12 +1008,13 @@ module.exports = {
     },
 
     async cancelWeeklyPipeline(interaction) {
-        if (activeWeeklyProcess && !activeWeeklyProcess.killed) {
-            activeWeeklyProcess.cancelled = true;
+        const proc = activeWeeklyProcess ? activeWeeklyProcess.proc : null;
+        if (proc && !proc.killed) {
+            proc.cancelled = true;
             try {
-                process.kill(-activeWeeklyProcess.pid, 'SIGKILL');
+                process.kill(-proc.pid, 'SIGKILL');
             } catch (e) {
-                try { activeWeeklyProcess.kill('SIGKILL'); } catch (err) { }
+                try { proc.kill('SIGKILL'); } catch (err) { }
             }
             activeWeeklyProcess = null;
             isWeeklyJobRunning = false;

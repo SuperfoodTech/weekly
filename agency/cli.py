@@ -296,7 +296,13 @@ def interactive_mode():
                 print(f"  {RED}Input tidak valid. Masukkan 1, 2, atau 3.{RESET}")
 
         elif state == "grab_outlet":
-            df_grab = df_main[df_main["Aplikasi"].str.contains("Grab", na=False, case=False) & df_main["Status"].str.contains("Live", na=False, case=False)]
+            df_grab = df_main[
+                df_main["Aplikasi"].str.contains("Grab", na=False, case=False) & 
+                df_main["Status"].str.contains("Live", na=False, case=False) &
+                df_main["Nama Pengguna"].notna() & 
+                (df_main["Nama Pengguna"].str.strip() != "") & 
+                (df_main["Nama Pengguna"].str.strip() != "-")
+            ]
             if df_grab.empty:
                 print(f"  {RED}[ERROR] Tidak ada outlet Grab di Google Sheets.{RESET}")
                 state = "scope"
@@ -309,7 +315,7 @@ def interactive_mode():
             print(f"    {CYAN}[b]{RESET} Kembali ke cakupan outlet")
             print()
             
-            o_choices = input(f"  {BOLD}Pilih nomor outlet Grab (contoh: 1,3 atau 'all' atau 'b'):{RESET} ").strip()
+            o_choices = input(f"  {BOLD}Pilih nomor outlet Grab (contoh: 1,3 atau 'all' or 'b'):{RESET} ").strip()
             if o_choices.lower() == "b":
                 state = "scope"
             elif o_choices.lower() == "all":
@@ -337,7 +343,13 @@ def interactive_mode():
                     print(f"  {RED}Pilihan tidak valid.{RESET}")
 
         elif state == "grab_branch":
-            df_grab = df_main[df_main["Aplikasi"].str.contains("Grab", na=False, case=False) & df_main["Status"].str.contains("Live", na=False, case=False)]
+            df_grab = df_main[
+                df_main["Aplikasi"].str.contains("Grab", na=False, case=False) & 
+                df_main["Status"].str.contains("Live", na=False, case=False) &
+                df_main["Nama Pengguna"].notna() & 
+                (df_main["Nama Pengguna"].str.strip() != "") & 
+                (df_main["Nama Pengguna"].str.strip() != "-")
+            ]
             df_branch = df_grab[df_grab["Nama Outlet"] == outlet[0]]
             branch_col = "Cabang" if "Cabang" in df_branch.columns else "Brand"
             branches = sorted(df_branch[branch_col].dropna().unique()) if branch_col in df_branch.columns else []
@@ -372,7 +384,13 @@ def interactive_mode():
                     print(f"  {RED}Pilihan tidak valid.{RESET}")
 
         elif state == "shopee_merchant":
-            df_shopee = df_main[df_main["Aplikasi"].str.contains("Shopee", na=False, case=False) & df_main["Status"].str.contains("Live", na=False, case=False)]
+            df_shopee = df_main[
+                df_main["Aplikasi"].str.contains("Shopee", na=False, case=False) & 
+                df_main["Status"].str.contains("Live", na=False, case=False) &
+                df_main["Merchant Name"].notna() &
+                (df_main["Merchant Name"].str.strip() != "") &
+                (df_main["Merchant Name"].str.strip() != "-")
+            ]
             if df_shopee.empty:
                 print(f"  {RED}[ERROR] Tidak ada merchant Shopee di Google Sheets.{RESET}")
                 if platform == "all":

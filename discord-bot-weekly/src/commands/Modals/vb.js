@@ -856,7 +856,7 @@ module.exports = {
                 }
             });
 
-            activeWeeklyProcess = pipeline.proc;
+            activeWeeklyProcess = pipeline;
 
             pipeline.promise.then(async (result) => {
                 isWeeklyJobRunning = false;
@@ -1028,12 +1028,13 @@ module.exports = {
     },
 
     async cancelWeeklyPipeline(interaction) {
-        if (activeWeeklyProcess && !activeWeeklyProcess.killed) {
-            activeWeeklyProcess.cancelled = true;
+        const proc = activeWeeklyProcess ? activeWeeklyProcess.proc : null;
+        if (proc && !proc.killed) {
+            proc.cancelled = true;
             try {
-                process.kill(-activeWeeklyProcess.pid, 'SIGKILL');
+                process.kill(-proc.pid, 'SIGKILL');
             } catch (e) {
-                try { activeWeeklyProcess.kill('SIGKILL'); } catch (err) { }
+                try { proc.kill('SIGKILL'); } catch (err) { }
             }
             activeWeeklyProcess = null;
             isWeeklyJobRunning = false;
