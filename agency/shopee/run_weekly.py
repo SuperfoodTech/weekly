@@ -524,12 +524,30 @@ def run_pipeline():
                                         if download_file(rep.get("download_url"), target_path):
                                             log.info(f"  ✅ [RETRY DOWNLOAD] SUCCESS: {m_name} -> {report_name}")
                                             downloaded = True
+                                            merchants_context[m_name]["downloaded"].append((target_path, report_name))
                                             break
                             if not downloaded:
                                 time.sleep(5)
                         
                         if not downloaded:
                             log.error(f"  ❌ [RETRY] Timeout waiting for download: {m_name}")
+
+            # --- Print final processing summary ---
+            final_failures = []
+            for m_name, ctx in merchants_context.items():
+                if len(ctx.get("downloaded", [])) < len(global_ranges):
+                    final_failures.append(m_name)
+            
+            log.info("\n" + "="*60)
+            log.info("  ALL MERCHANTS FINISHED PROCESSING")
+            if final_failures:
+                log.info("-" * 60)
+                log.info(f"  FAILED MERCHANTS ({len(final_failures)}):")
+                for fm in final_failures:
+                    log.info(f"  - {fm}")
+            else:
+                log.info("  ✓ ALL MERCHANTS PROCESSED SUCCESSFULLY")
+            log.info("="*60 + "\n")
 
         finally:
             if driver is not None:
