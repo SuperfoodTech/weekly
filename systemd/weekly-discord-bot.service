@@ -1,0 +1,20 @@
+[Unit]
+Description=Weekly Transaction Pipeline Discord Bot
+After=network.target
+
+[Service]
+Type=simple
+User=akbarhann
+WorkingDirectory=/home/akbarhann/project/weekly/discord-bot-weekly
+ExecStart=/usr/bin/env node index.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=weekly-discord-bot
+
+# Loads environment variables from the .env file
+EnvironmentFile=/home/akbarhann/project/weekly/discord-bot-weekly/.env
+
+[Install]
+WantedBy=multi-user.target
