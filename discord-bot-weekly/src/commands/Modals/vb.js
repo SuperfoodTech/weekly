@@ -346,6 +346,7 @@ async function getVBOutlets(platform) {
 const makeProgressEmbed = (currentStepName, title, description, fields = [], hasOutletStep = true, isAllPlatform = false) => {
     const allSteps = [
         { name: 'Aplikator', icon: '📱' },
+        { name: 'Periode', icon: '📅' },
         { name: 'Cakupan', icon: '🏢' }
     ];
     if (hasOutletStep) {
@@ -356,7 +357,6 @@ const makeProgressEmbed = (currentStepName, title, description, fields = [], has
             allSteps.push({ name: 'Outlet', icon: '🏪' });
         }
     }
-    allSteps.push({ name: 'Periode', icon: '📅' });
     allSteps.push({ name: 'Konfirmasi', icon: '📋' });
 
     let progressStr = '';
@@ -1394,7 +1394,9 @@ module.exports = {
                 branch: '',
                 user: '',
                 skipExisting: skipExisting,
-                channelId: interaction.channelId
+                channelId: interaction.channelId,
+                grabOutlet: grabResultValues.join('|'),
+                shopeeMerchant: shopeeResultValues.join('|')
             };
 
             let currentStep = 1;

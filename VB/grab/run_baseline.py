@@ -91,8 +91,13 @@ async def run_all(date_start: str = None, date_end: str = None, output_dir: str 
                 branch = ""  # No branch in VB Grab
                 
                 # Apply custom outlet and branch filters internally
-                if outlet_filter and str(outlet).strip().lower() != str(outlet_filter).strip().lower():
-                    continue
+                if outlet_filter:
+                    if "|" in outlet_filter:
+                        valid_outlets = [o.strip().lower() for o in outlet_filter.split("|")]
+                        if str(outlet).strip().lower() not in valid_outlets:
+                            continue
+                    elif str(outlet).strip().lower() != str(outlet_filter).strip().lower():
+                        continue
                 
                 # Smart credential validation
                 is_valid, err_msg = validate_credentials(u_str, p_str)

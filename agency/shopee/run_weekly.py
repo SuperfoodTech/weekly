@@ -222,17 +222,28 @@ def run_pipeline():
     import glob
     if not args.skip_download and os.path.exists(report_dir):
         if args.merchant:
-            m_underscored = args.merchant.replace(' ', '_').replace('|', '_')
-            if len(m_underscored) > 50:
-                old_excels = glob.glob(os.path.join(report_dir, "0Master*.xlsx"))
-            else:
-                old_excels = glob.glob(os.path.join(report_dir, f"*{m_underscored}*.xlsx"))
+            merchants_to_clean = [m.strip().replace(' ', '_') for m in args.merchant.split('|')]
+            old_excels = []
+            for m_clean in merchants_to_clean:
+                # Find files starting with this merchant name
+                old_excels.extend(glob.glob(os.path.join(report_dir, f"{m_clean}_*.xlsx")))
+                # Find CUSTOM_ files containing this merchant name
+                old_excels.extend(glob.glob(os.path.join(report_dir, f"CUSTOM_*{m_clean}*.xlsx")))
+            # Find and clean up 0Master*.xlsx
+            old_excels.extend(glob.glob(os.path.join(report_dir, "0Master*.xlsx")))
         else:
             old_excels = glob.glob(os.path.join(report_dir, "*.xlsx"))
             
-        old_excels = [f for f in old_excels if not os.path.basename(f).startswith("Master_Weekly_Report_ShopeeFood") and not os.path.basename(f).startswith("0Master")]
+        # Exclude Master_Weekly_Report_ShopeeFood from being deleted
+        old_excels = [f for f in old_excels if not os.path.basename(f).startswith("Master_Weekly_Report_ShopeeFood")]
+        
+        # If full run, also exclude 0Master from being deleted (user wants to keep master reports in full runs)
+        if not args.merchant:
+            old_excels = [f for f in old_excels if not os.path.basename(f).startswith("0Master")]
             
         if old_excels:
+            # Remove duplicates if any
+            old_excels = list(set(old_excels))
             log.info(f"🧹 Clearing {len(old_excels)} old Excel files in {report_dir} to prepare for fresh run...")
             for f in old_excels:
                 try: os.unlink(f)

@@ -7,6 +7,10 @@ set -e
 # Change directory to the repository root
 cd "$(dirname "$0")"
 
+echo "=== Restoring Chrome Profile in Agency ==="
+git restore agency/data/chrome_profile/
+git clean -fdx agency/data/chrome_profile/
+
 echo "=== Pulling latest changes from GitHub ==="
 git pull
 

@@ -407,7 +407,43 @@ def run_pipeline():
 
     log.info(f"📋 [PROGRESS] Found {len(portals_to_run)} portal(s) ready to process.")
 
-    # Pre-run cleanup of old Excel files is disabled as per user request
+    # Pre-run cleanup of old Excel files and history if we are NOT skipping existing (Jalankan Semua)
+    if not args.skip_download:
+        if not args.skip_existing:
+            log.info("🧹 Clearing existing download history and files for target portals to prepare for fresh run...")
+            history = _load_history()
+            keys_to_del = []
+            
+            for p in portals_to_run:
+                account_name = p["account_name"]
+                merchant_name = p["merchant_name"]
+                for r in global_ranges:
+                    start_str = datetime.fromtimestamp(r["start"]).strftime("%Y%m%d")
+                    end_str   = datetime.fromtimestamp(r["end"]).strftime("%Y%m%d")
+                    date_pattern = f"{start_str}_{end_str}"
+                    h_key = _history_key(account_name, date_pattern)
+                    if h_key in history:
+                        keys_to_del.append(h_key)
+                
+                # Delete files
+                safe_merchant = merchant_name.replace(" ", "_")
+                import glob
+                for f in glob.glob(os.path.join(report_dir, f"{safe_merchant}_*.xlsx")):
+                    try: os.unlink(f)
+                    except Exception as e: log.debug(f"Failed to delete {f}: {e}")
+            
+            if keys_to_del:
+                with _history_lock:
+                    try:
+                        if os.path.exists(VB_HISTORY_PATH):
+                            with open(VB_HISTORY_PATH, "r") as f:
+                                current = json.load(f)
+                            for k in keys_to_del:
+                                current.pop(k, None)
+                            with open(VB_HISTORY_PATH, "w") as f:
+                                json.dump(current, f, indent=2)
+                    except Exception as e:
+                        log.warning(f"Failed to update history: {e}")
 
     # ── 1. Phase 1: Authentication / Session Check (Sequential) ──
     if args.skip_download:

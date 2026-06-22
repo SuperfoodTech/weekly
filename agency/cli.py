@@ -523,6 +523,8 @@ def main():
     parser.add_argument("--user", type=str, default=None, help="Filter specific username (Grab only)")
     parser.add_argument("--outlet", type=str, default=None, help="Filter specific outlet name")
     parser.add_argument("--branch", type=str, default=None, help="Filter specific branch name")
+    parser.add_argument("--grab-outlet", type=str, default=None, help="Filter specific Grab outlet names (pipe-separated)")
+    parser.add_argument("--shopee-merchant", type=str, default=None, help="Filter specific Shopee merchant names (pipe-separated)")
     parser.add_argument("--skip-existing", action="store_true", help="Skip already processed/downloaded outlets/merchants")
     args = parser.parse_args()
 
@@ -535,12 +537,22 @@ def main():
         platform = args.platform.lower()
         start_date = args.start
         end_date = args.end
-        outlet = [x.strip() for x in args.outlet.split("|")] if args.outlet else []
         branch = [x.strip() for x in args.branch.split("|")] if args.branch else []
-        shopee_merchant = []
-        if args.outlet:
-            for o in outlet:
-                shopee_merchant.append(_resolve_shopee_merchant(o, branch_name=args.branch))
+        
+        # Handle separate outlet filters if provided
+        if args.grab_outlet or args.shopee_merchant:
+            outlet = [x.strip() for x in args.grab_outlet.split("|")] if args.grab_outlet else []
+            raw_shopee = [x.strip() for x in args.shopee_merchant.split("|")] if args.shopee_merchant else []
+            shopee_merchant = []
+            for s in raw_shopee:
+                shopee_merchant.append(_resolve_shopee_merchant(s, branch_name=args.branch))
+        else:
+            outlet = [x.strip() for x in args.outlet.split("|")] if args.outlet else []
+            shopee_merchant = []
+            if args.outlet:
+                for o in outlet:
+                    shopee_merchant.append(_resolve_shopee_merchant(o, branch_name=args.branch))
+                    
         skip_existing = args.skip_existing
         banner()
 

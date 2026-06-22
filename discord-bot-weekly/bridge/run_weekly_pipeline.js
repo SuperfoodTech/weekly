@@ -144,7 +144,13 @@ function runWeeklyPipeline(formData, onLog = () => { }) {
             '--end', endDate,
         ];
 
-        if (outlet) {
+        if (formData.grabOutlet) {
+            args.push('--grab-outlet', formData.grabOutlet);
+        }
+        if (formData.shopeeMerchant) {
+            args.push('--shopee-merchant', formData.shopeeMerchant);
+        }
+        if (!formData.grabOutlet && !formData.shopeeMerchant && outlet) {
             args.push('--outlet', outlet);
         }
         if (branch) {

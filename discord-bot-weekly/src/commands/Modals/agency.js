@@ -358,6 +358,7 @@ async function getWeeklyOutlets(platform) {
 const makeProgressEmbed = (currentStepName, title, description, fields = [], hasOutletStep = true, isAllPlatform = false) => {
     const allSteps = [
         { name: 'Aplikator', icon: '📱' },
+        { name: 'Periode', icon: '📅' },
         { name: 'Cakupan', icon: '🏢' }
     ];
     if (hasOutletStep) {
@@ -368,7 +369,6 @@ const makeProgressEmbed = (currentStepName, title, description, fields = [], has
             allSteps.push({ name: 'Outlet', icon: '🏪' });
         }
     }
-    allSteps.push({ name: 'Periode', icon: '📅' });
     allSteps.push({ name: 'Konfirmasi', icon: '📋' });
 
     let progressStr = '';
@@ -620,7 +620,7 @@ module.exports = {
 
                     platform = result.values[0];
                     lastInteraction = result.lastInteraction;
-                    step = 'scope';
+                    step = 'period';
 
                 } else if (step === 'period') {
                     const today = new Date();
@@ -646,14 +646,7 @@ module.exports = {
 
                     const currentFields = [
                         { name: 'Tipe', value: 'AGENCY', inline: true },
-                        { name: 'Platform', value: platform.toUpperCase(), inline: true },
-                        {
-                            name: 'Cakupan',
-                            value: scope === 'all_outlets' ? 'Semua Outlet' :
-                                scope === 'select_merchant' ? `Merchant Terpilih (${selectedOutlets.length})` :
-                                    `Jalankan yang Belum (${selectedOutlets.length} terpilih)`,
-                            inline: true
-                        }
+                        { name: 'Platform', value: platform.toUpperCase(), inline: true }
                     ];
 
                     let errorMsg = null;
@@ -663,7 +656,7 @@ module.exports = {
                         if (errorMsg) {
                             desc = `❌ **Error:** ${errorMsg}\n\n` + desc;
                         }
-                        return makeProgressEmbed('Periode', '📅 Pilih Periode Laporan', desc, currentFields, scope !== 'all_outlets', platform === 'all');
+                        return makeProgressEmbed('Periode', '📅 Pilih Periode Laporan', desc, currentFields, true, platform === 'all');
                     };
 
                     const getPeriodComponents = () => {
@@ -814,20 +807,14 @@ module.exports = {
                     const periodResults = await getPeriodChoice();
                     if (periodResults.status === 'back') {
                         lastInteraction = periodResults.lastInteract;
-                        if (scope === 'all_outlets') {
-                            step = 'scope';
-                        } else if (scope === 'select_merchant') {
-                            step = platform === 'all' ? 'outlet_shopee' : 'outlet_single';
-                        } else if (scope === 'run_remaining') {
-                            step = platform === 'all' ? 'outlet_shopee_remaining' : 'outlet_single_remaining';
-                        }
+                        step = 'aplikator';
                         continue;
                     }
 
                     startDate = periodResults.start;
                     endDate = periodResults.end;
                     lastInteraction = periodResults.lastInteract;
-                    step = 'confirmation';
+                    step = 'scope';
                     continue;
 
                 } else if (step === 'scope') {
@@ -964,7 +951,7 @@ module.exports = {
                     shopeeResultValues = result.values;
                     selectedOutlets = grabResultValues.concat(shopeeResultValues);
                     lastInteraction = result.lastInteraction;
-                    step = 'period';
+                    step = 'confirmation';
 
                 } else if (step === 'outlet_single') {
                     const weeklyOutlets = await getWeeklyOutlets(platform);
@@ -1006,7 +993,7 @@ module.exports = {
 
                     selectedOutlets = result.values;
                     lastInteraction = result.lastInteraction;
-                    step = 'period';
+                    step = 'confirmation';
 
                 } else if (step === 'outlet_grab_remaining') {
                     const rawOutlets = await getWeeklyOutlets('grab');
@@ -1121,7 +1108,7 @@ module.exports = {
                             shopeeResultValues = [];
                             selectedOutlets = grabResultValues.concat(shopeeResultValues);
                             skipExisting = true;
-                            step = 'period';
+                            step = 'confirmation';
                         }
                         continue;
                     }
@@ -1157,7 +1144,7 @@ module.exports = {
                     selectedOutlets = grabResultValues.concat(shopeeResultValues);
                     skipExisting = true;
                     lastInteraction = result.lastInteraction;
-                    step = 'period';
+                    step = 'confirmation';
 
                 } else if (step === 'outlet_single_remaining') {
                     const weeklyOutlets = await getWeeklyOutlets(platform);
@@ -1198,7 +1185,7 @@ module.exports = {
                         } else {
                             selectedOutlets = [];
                             skipExisting = true;
-                            step = 'period';
+                            step = 'confirmation';
                         }
                         continue;
                     }
@@ -1232,7 +1219,7 @@ module.exports = {
                     selectedOutlets = result.values;
                     skipExisting = true;
                     lastInteraction = result.lastInteraction;
-                    step = 'period';
+                    step = 'confirmation';
 
                 } else if (step === 'confirmation') {
                     const currentFields = [
@@ -1329,7 +1316,13 @@ module.exports = {
                     const confirmResults = await getConfirmChoice();
                     if (confirmResults.status === 'back') {
                         lastInteraction = confirmResults.lastInteract;
-                        step = 'period';
+                        if (scope === 'all_outlets') {
+                            step = 'scope';
+                        } else if (scope === 'select_merchant') {
+                            step = platform === 'all' ? 'outlet_shopee' : 'outlet_single';
+                        } else if (scope === 'run_remaining') {
+                            step = platform === 'all' ? 'outlet_shopee_remaining' : 'outlet_single_remaining';
+                        }
                         continue;
                     }
 
@@ -1406,7 +1399,9 @@ module.exports = {
                 branch: '',
                 user: '',
                 skipExisting: skipExisting,
-                channelId: interaction.channelId
+                channelId: interaction.channelId,
+                grabOutlet: grabResultValues.join('|'),
+                shopeeMerchant: shopeeResultValues.join('|')
             };
 
             let currentStep = 1;
