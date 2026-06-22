@@ -84,3 +84,6 @@ VB/data/*_cache.csv
 **/Network Action Predictor
 **/Network Persistent State
 
+# Allow VB chrome profiles
+!VB/data/chrome_profiles/
+!VB/data/chrome_profiles/**

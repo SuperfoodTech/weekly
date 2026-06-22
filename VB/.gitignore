@@ -36,3 +36,84 @@ data/*_cache.csv
 **/AutofillAiModelCache/
 **/ScriptCache/
 **/CacheStorage/
+
+# Allow VB chrome profiles
+!data/chrome_profiles/
+!data/chrome_profiles/**
+
+# Ignore bloat inside chrome_profiles
+data/chrome_profiles/**/Cache/
+data/chrome_profiles/**/Code Cache/
+data/chrome_profiles/**/DawnCache/
+data/chrome_profiles/**/GPUCache/
+data/chrome_profiles/**/Crashpad/
+data/chrome_profiles/**/Service Worker/
+data/chrome_profiles/**/optimization_guide_model_store/
+data/chrome_profiles/**/BrowserMetrics*/
+data/chrome_profiles/**/Singleton*
+data/chrome_profiles/**/lockfile
+data/chrome_profiles/**/DevToolsActivePort
+
+# Extra Chrome profile bloat ignores
+data/chrome_profiles/**/GrShaderCache/
+data/chrome_profiles/**/GraphiteDawnCache/
+data/chrome_profiles/**/ShaderCache/
+data/chrome_profiles/**/DawnGraphiteCache/
+data/chrome_profiles/**/DawnWebGPUCache/
+data/chrome_profiles/**/AutofillAiModelCache/
+data/chrome_profiles/**/component_crx_cache/
+data/chrome_profiles/**/extensions_crx_cache/
+data/chrome_profiles/**/optimization_guide_hint_cache_store/
+data/chrome_profiles/**/segmentation_platform/
+data/chrome_profiles/**/first_party_sets.db*
+data/chrome_profiles/**/BrowserMetrics-spare.pma
+data/chrome_profiles/**/LOCK
+data/chrome_profiles/**/LOG
+data/chrome_profiles/**/LOG.old
+data/chrome_profiles/**/crl-set
+data/chrome_profiles/**/keys.json
+data/chrome_profiles/**/manifest.json
+data/chrome_profiles/**/LICENSE*
+data/chrome_profiles/**/verified_contents.json
+data/chrome_profiles/**/en-US-10-1.bdic
+data/chrome_profiles/**/WidevineCdm/
+data/chrome_profiles/**/AutofillStrikeDatabase/
+data/chrome_profiles/**/BudgetDatabase/
+data/chrome_profiles/**/ClientCertificates/
+data/chrome_profiles/**/Download Service/
+data/chrome_profiles/**/Feature Engagement Tracker/
+data/chrome_profiles/**/TrustTokenKeyCommitments/
+data/chrome_profiles/**/OptimizationHints/
+data/chrome_profiles/**/CertificateRevocation/
+data/chrome_profiles/**/Subresource Filter/
+data/chrome_profiles/**/History*
+data/chrome_profiles/**/Favicons*
+data/chrome_profiles/**/DIPS*
+data/chrome_profiles/**/BrowsingTopicsState*
+data/chrome_profiles/**/Reporting and NEL*
+data/chrome_profiles/**/Network Action Predictor*
+data/chrome_profiles/**/Network Persistent State*
+data/chrome_profiles/**/TransportSecurity
+data/chrome_profiles/**/Variations
+data/chrome_profiles/**/First Run
+data/chrome_profiles/**/Last Version
+
+# Ignore other non-essential component directories
+data/chrome_profiles/**/ActorSafetyLists/
+data/chrome_profiles/**/AmountExtractionHeuristicRegexes/
+data/chrome_profiles/**/CaptchaProviders/
+data/chrome_profiles/**/Crowd Deny/
+data/chrome_profiles/**/FileTypePolicies/
+data/chrome_profiles/**/FirstPartySetsPreloaded/
+data/chrome_profiles/**/MEIPreload/
+data/chrome_profiles/**/NativeMessagingHosts/
+data/chrome_profiles/**/OnDeviceHeadSuggestModel/
+data/chrome_profiles/**/PKIMetadata/
+data/chrome_profiles/**/PrivacySandboxAttestationsPreloaded/
+data/chrome_profiles/**/SSLErrorAssistant/
+data/chrome_profiles/**/Safe Browsing/
+data/chrome_profiles/**/SafetyTips/
+data/chrome_profiles/**/WasmTtsEngine/
+data/chrome_profiles/**/ZxcvbnData/
+data/chrome_profiles/**/hyphen-data/
+
