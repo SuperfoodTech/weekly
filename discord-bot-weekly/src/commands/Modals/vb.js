@@ -334,7 +334,8 @@ async function getVBOutlets(platform) {
 const makeProgressEmbed = (currentStepName, title, description, fields = [], hasOutletStep = true, isAllPlatform = false) => {
     const allSteps = [
         { name: 'Aplikator', icon: '📱' },
-        { name: 'Cakupan', icon: '🏢' }
+        { name: 'Cakupan', icon: '🏢' },
+        { name: 'Periode', icon: '📅' }
     ];
     if (hasOutletStep) {
         if (isAllPlatform) {
@@ -344,7 +345,6 @@ const makeProgressEmbed = (currentStepName, title, description, fields = [], has
             allSteps.push({ name: 'Outlet', icon: '🏪' });
         }
     }
-    allSteps.push({ name: 'Periode', icon: '📅' });
     allSteps.push({ name: 'Konfirmasi', icon: '📋' });
 
     let progressStr = '';
@@ -588,7 +588,7 @@ module.exports = {
 
                     platform = result.values[0];
                     lastInteraction = result.lastInteraction;
-                    step = 'period';
+                    step = 'scope';
 
                 } else if (step === 'period') {
                     const today = new Date();
@@ -614,7 +614,14 @@ module.exports = {
 
                     const currentFields = [
                         { name: 'Tipe', value: 'VB', inline: true },
-                        { name: 'Platform', value: platform.toUpperCase(), inline: true }
+                        { name: 'Platform', value: platform.toUpperCase(), inline: true },
+                        {
+                            name: 'Cakupan',
+                            value: scope === 'all_outlets' ? 'Semua Outlet' :
+                                   scope === 'select_merchant' ? 'Pilih Merchant Tertentu' :
+                                   'Jalankan yang Belum',
+                            inline: true
+                        }
                     ];
 
                     let errorMsg = null;
@@ -775,47 +782,13 @@ module.exports = {
                     const periodResults = await getPeriodChoice();
                     if (periodResults.status === 'back') {
                         lastInteraction = periodResults.lastInteract;
-                        step = 'aplikator';
+                        step = 'scope';
                         continue;
                     }
 
                     startDate = periodResults.start;
                     endDate = periodResults.end;
                     lastInteraction = periodResults.lastInteract;
-                    step = 'scope';
-                    continue;
-
-                } else if (step === 'scope') {
-                    const result = await askSelection(lastInteraction, {
-                        stepName: 'Cakupan',
-                        title: '🏢 Cakupan Outlet',
-                        placeholder: 'Pilih cakupan outlet...',
-                        options: [
-                            { label: 'Semua Outlet', value: 'all_outlets', description: 'Tarik data untuk seluruh outlet di GSheets' },
-                            { label: 'Pilih Merchant Tertentu', value: 'select_merchant', description: 'Pilih satu atau lebih outlet dari daftar' },
-                            { label: '🧡 Jalankan yang Belum', value: 'run_remaining', description: 'Hanya jalankan outlet yang laporannya belum ada di server' }
-                        ],
-                        minValues: 1,
-                        maxValues: 1,
-                        fields: [
-                            { name: 'Tipe', value: 'VB', inline: true },
-                            { name: 'Platform', value: platform.toUpperCase(), inline: true },
-                            { name: 'Periode', value: `${startDate} s/d ${endDate}`, inline: true }
-                        ],
-                        hasOutletStep: true,
-                        isAllPlatform: platform === 'all',
-                        showBackButton: true,
-                        initialSelections: scope ? [scope] : []
-                    });
-
-                    if (result.status === 'back') {
-                        step = 'period';
-                        lastInteraction = result.lastInteraction;
-                        continue;
-                    }
-
-                    scope = result.values[0];
-                    lastInteraction = result.lastInteraction;
 
                     if (scope === 'select_merchant') {
                         if (platform === 'all') {
@@ -834,6 +807,40 @@ module.exports = {
                         skipExisting = false;
                         step = 'confirmation';
                     }
+                    continue;
+
+                } else if (step === 'scope') {
+                    const result = await askSelection(lastInteraction, {
+                        stepName: 'Cakupan',
+                        title: '🏢 Cakupan Outlet',
+                        placeholder: 'Pilih cakupan outlet...',
+                        options: [
+                            { label: 'Semua Outlet', value: 'all_outlets', description: 'Tarik data untuk seluruh outlet di GSheets' },
+                            { label: 'Pilih Merchant Tertentu', value: 'select_merchant', description: 'Pilih satu atau lebih outlet dari daftar' },
+                            { label: '🧡 Jalankan yang Belum', value: 'run_remaining', description: 'Hanya jalankan outlet yang laporannya belum ada di server' }
+                        ],
+                        minValues: 1,
+                        maxValues: 1,
+                        fields: [
+                            { name: 'Tipe', value: 'VB', inline: true },
+                            { name: 'Platform', value: platform.toUpperCase(), inline: true }
+                        ],
+                        hasOutletStep: true,
+                        isAllPlatform: platform === 'all',
+                        showBackButton: true,
+                        initialSelections: scope ? [scope] : []
+                    });
+
+                    if (result.status === 'back') {
+                        step = 'aplikator';
+                        lastInteraction = result.lastInteraction;
+                        continue;
+                    }
+
+                    scope = result.values[0];
+                    lastInteraction = result.lastInteraction;
+                    step = 'period';
+                    continue;
 
                 } else if (step === 'outlet_grab') {
                     const grabOutlets = await getVBOutlets('grab');
@@ -868,7 +875,7 @@ module.exports = {
                     });
 
                     if (result.status === 'back') {
-                        step = 'scope';
+                        step = 'period';
                         lastInteraction = result.lastInteraction;
                         continue;
                     }
@@ -954,7 +961,7 @@ module.exports = {
                     });
 
                     if (result.status === 'back') {
-                        step = 'scope';
+                        step = 'period';
                         lastInteraction = result.lastInteraction;
                         continue;
                     }
@@ -994,7 +1001,7 @@ module.exports = {
                     });
 
                     if (result.status === 'back') {
-                        step = 'scope';
+                        step = 'period';
                         lastInteraction = result.lastInteraction;
                         continue;
                     }
@@ -1034,7 +1041,7 @@ module.exports = {
                             });
 
                             lastInteraction = i;
-                            step = 'scope';
+                            step = 'period';
                             continue;
                         }
 
@@ -1108,7 +1115,7 @@ module.exports = {
                         });
 
                         lastInteraction = i;
-                        step = 'scope';
+                        step = 'period';
                         continue;
                     }
 
@@ -1133,7 +1140,7 @@ module.exports = {
                     });
 
                     if (result.status === 'back') {
-                        step = 'scope';
+                        step = 'period';
                         lastInteraction = result.lastInteraction;
                         continue;
                     }
@@ -1231,7 +1238,7 @@ module.exports = {
                     if (confirmResults.status === 'back') {
                         lastInteraction = confirmResults.lastInteract;
                         if (scope === 'all_outlets') {
-                            step = 'scope';
+                            step = 'period';
                         } else if (scope === 'select_merchant') {
                             step = platform === 'all' ? 'outlet_shopee' : 'outlet_single';
                         } else if (scope === 'run_remaining') {
