@@ -175,8 +175,36 @@ function runWeeklyPipeline(formData, onLog = () => { }) {
         });
         pipelineObj.proc = proc;
 
+        let silenceTimer = null;
+        const SILENCE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes silence timeout
+
+        function resetSilenceTimer() {
+            if (silenceTimer) {
+                clearTimeout(silenceTimer);
+            }
+            silenceTimer = setTimeout(() => {
+                const errMsg = `❌ [TIMEOUT] Proses dihentikan otomatis karena tidak ada log/aktivitas baru selama 15 menit.`;
+                onLog(errMsg);
+                output += errMsg + '\n';
+                console.error(errMsg);
+
+                if (pipelineObj.proc && pipelineObj.proc.pid) {
+                    pipelineObj.proc.cancelled = true;
+                    try {
+                        process.kill(-pipelineObj.proc.pid, 'SIGKILL');
+                    } catch (e) {
+                        try { pipelineObj.proc.kill('SIGKILL'); } catch (err) { }
+                    }
+                }
+            }, SILENCE_TIMEOUT_MS);
+        }
+
+        // Start silence timer
+        resetSilenceTimer();
+
         const rlStdout = readline.createInterface({ input: proc.stdout });
         rlStdout.on('line', (line) => {
+            resetSilenceTimer();
             output += line + '\n';
             process.stdout.write(line + '\n');
             const clean = line.replace(/\x1B\[[0-9;]*m/g, '').trim();
@@ -185,11 +213,16 @@ function runWeeklyPipeline(formData, onLog = () => { }) {
 
         const rlStderr = readline.createInterface({ input: proc.stderr });
         rlStderr.on('line', (line) => {
+            resetSilenceTimer();
             output += line + '\n';
             process.stderr.write(line + '\n');
         });
 
         const cleanupAndResolve = async (data) => {
+            if (silenceTimer) {
+                clearTimeout(silenceTimer);
+                silenceTimer = null;
+            }
             await controlWarmer('unpause', onLog);
             
             if (pipelineObj.proc && pipelineObj.proc.pid) {

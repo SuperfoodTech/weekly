@@ -99,4 +99,8 @@ const startBot = async () => {
     }
 };
 
+// Start weekly automated cron scheduler
+const { scheduleNextWeeklyRun } = require('./src/weekly-cron');
+scheduleNextWeeklyRun();
+
 startBot();

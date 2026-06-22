@@ -603,7 +603,7 @@ module.exports = {
                         title: '📱 Pilih Aplikator',
                         placeholder: 'Pilih platform aplikator...',
                         options: [
-                            { label: '🌟 Semua Aplikator', value: 'all', description: 'Tarik data untuk GrabFood & ShopeeFood' },
+                            { label: 'Semua Aplikator', value: 'all', description: 'Tarik data untuk GrabFood & ShopeeFood' },
                             { label: 'GrabFood', value: 'grab', emoji: { name: '🟢' }, description: 'Hanya tarik data GrabFood' },
                             { label: 'ShopeeFood', value: 'shopee', emoji: { name: '🟠' }, description: 'Hanya tarik data ShopeeFood' }
                         ],
@@ -1349,7 +1349,8 @@ module.exports = {
 
             const startTime = Date.now();
             let currentLog = 'Memulai pipeline weekly...';
-            let lastUpdate = Date.now();
+            let lastUpdate = 0;
+            let updateTimeout = null;
 
             let currentPlatform = platform.toUpperCase();
             let currentMerchant = 'Menunggu...';
@@ -1410,6 +1411,55 @@ module.exports = {
 
             let currentStep = 1;
             let fallbackMessage = null;
+
+            const performEdit = async () => {
+                const embed = buildProgressEmbed(currentStep, currentLog);
+                if (fallbackMessage) {
+                    await fallbackMessage.edit({
+                        embeds: [embed],
+                        components: [cancelRow]
+                    }).catch(() => { });
+                } else {
+                    try {
+                        await finalInteraction.editReply({
+                            embeds: [embed],
+                            components: [cancelRow]
+                        });
+                    } catch (err) {
+                        console.log('[DISCORD] Interaction expired. Switching to channel message fallback.');
+                        try {
+                            fallbackMessage = await interaction.channel.send({
+                                embeds: [embed],
+                                components: [cancelRow]
+                            });
+                        } catch (sendErr) {
+                            console.error('[DISCORD] Failed to send fallback message:', sendErr);
+                        }
+                    }
+                }
+            };
+
+            const triggerProgressEdit = (force = false) => {
+                const now = Date.now();
+                const timeSinceLast = now - lastUpdate;
+                if (force || timeSinceLast >= 2000) {
+                    lastUpdate = now;
+                    if (updateTimeout) {
+                        clearTimeout(updateTimeout);
+                        updateTimeout = null;
+                    }
+                    performEdit().catch(() => { });
+                } else {
+                    if (!updateTimeout) {
+                        updateTimeout = setTimeout(() => {
+                            lastUpdate = Date.now();
+                            updateTimeout = null;
+                            performEdit().catch(() => { });
+                        }, 2000 - timeSinceLast);
+                    }
+                }
+            };
+
             const pipeline = runWeeklyPipeline(formData, async (logLine) => {
                 const cleanLines = logLine.split('\n').map(l => l.trim()).filter(Boolean);
                 let stateChanged = false;
@@ -1454,40 +1504,18 @@ module.exports = {
                 }
 
                 const now = Date.now();
-                if (stateChanged || (now - lastUpdate > 3000)) {
-                    if (now - lastUpdate > 1500) {
-                        lastUpdate = now;
-                        const embed = buildProgressEmbed(currentStep, currentLog);
-                        if (fallbackMessage) {
-                            await fallbackMessage.edit({
-                                embeds: [embed],
-                                components: [cancelRow]
-                            }).catch(() => { });
-                        } else {
-                            try {
-                                await finalInteraction.editReply({
-                                    embeds: [embed],
-                                    components: [cancelRow]
-                                });
-                            } catch (err) {
-                                console.log('[DISCORD] Interaction expired. Switching to channel message fallback.');
-                                try {
-                                    fallbackMessage = await interaction.channel.send({
-                                        embeds: [embed],
-                                        components: [cancelRow]
-                                    });
-                                } catch (sendErr) {
-                                    console.error('[DISCORD] Failed to send fallback message:', sendErr);
-                                }
-                            }
-                        }
-                    }
+                if (stateChanged || (now - lastUpdate > 5000)) {
+                    triggerProgressEdit();
                 }
             });
 
             activeWeeklyProcess = pipeline;
 
             pipeline.promise.then(async (result) => {
+                if (updateTimeout) {
+                    clearTimeout(updateTimeout);
+                    updateTimeout = null;
+                }
                 isWeeklyJobRunning = false;
                 activeWeeklyProcess = null;
 
