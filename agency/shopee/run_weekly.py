@@ -744,11 +744,8 @@ def run_pipeline():
         else:
             working["Status"] = ""
 
-        # Aturan validasi: ID pesanan valid dan bukan dibatalkan
-        valid_long_order_id = working["Long Order ID"].str.match(r"^[A-Za-z0-9-]+$", na=False)
-        is_not_cancelled = ~working["Status"].str.contains("batal|cancel", na=False, case=False)
-        
-        master_df = working.loc[valid_long_order_id & is_not_cancelled].copy()
+        # Aturan validasi: Dinonaktifkan sesuai permintaan (tanpa filter ID pesanan & cancel)
+        master_df = working.copy()
         
         if master_df.empty:
             log.warning("⚠️ Tidak ada transaksi yang valid setelah filter diterapkan.")

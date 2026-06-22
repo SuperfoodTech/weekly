@@ -321,21 +321,9 @@ async def run_all(date_start: str = None, date_end: str = None, output_dir: str 
         if before_count > after_count:
             log.info(f"  [INFO] Menghapus {before_count - after_count} baris duplikat.")
 
-    # --- Terapkan Filter Baseline (Long Order ID & Status) ---
+    # --- Terapkan Filter Baseline (Long Order ID & Status) - Dinonaktifkan sesuai permintaan ---
     working = master_df.copy()
-    if "Long Order ID" in working.columns:
-        valid_long_id = working["Long Order ID"].astype(str).str.strip()
-        is_valid_order_id = (valid_long_id != "") & valid_long_id.str.contains(r'[^A-Za-z0-9]', regex=True, na=False)
-    else:
-        is_valid_order_id = pd.Series(True, index=working.index)
-        
-    if "Status" in working.columns:
-        working["Status"] = working["Status"].fillna("").astype(str).str.strip().str.casefold()
-        is_not_cancelled = working["Status"].ne("cancelled")
-    else:
-        is_not_cancelled = pd.Series(True, index=working.index)
-        
-    master_df = working.loc[is_valid_order_id & is_not_cancelled].copy()
+    master_df = working.copy()
     
     if master_df.empty:
         log.warning("⚠️ Tidak ada transaksi yang valid setelah filter diterapkan.")

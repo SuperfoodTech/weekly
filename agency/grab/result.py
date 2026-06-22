@@ -63,12 +63,8 @@ def summarize_monthly(
 	working["Net Sales"] = pd.to_numeric(working["Net Sales"], errors="coerce").fillna(0)
 	working["Status"] = working["Status"].fillna("").astype(str).str.strip().str.casefold()
 
-	valid_long_order_id = working["Long Order ID"].str.match(r"^[A-Za-z0-9-]+$", na=False)
-	
-	# We exclude Cancelled orders
-	is_not_cancelled = working["Status"].ne("cancelled")
-	
-	valid_orders = working.loc[valid_long_order_id & is_not_cancelled].copy()
+	# We exclude Cancelled orders and validate order ID - disabled as per request
+	valid_orders = working.copy()
 	valid_orders = valid_orders.loc[valid_orders["Updated On"].notna()].copy()
 	if date_start is not None:
 		valid_orders = valid_orders.loc[valid_orders["Updated On"] >= date_start].copy()
