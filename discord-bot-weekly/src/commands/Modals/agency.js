@@ -83,9 +83,18 @@ function isOutletDownloaded(target, platform, startDate, endDate, outletName) {
     try {
         const files = fs.readdirSync(outputDir);
         const cleanName = checkName.trim().toLowerCase();
+        const cleanNameUnderscore = cleanName.replace(/\s+/g, '_');
         return files.some(file => {
             const fLower = file.toLowerCase();
-            return fLower.startsWith(cleanName + '_') && fLower.endsWith('.xlsx');
+            if (!fLower.endsWith('.xlsx')) return false;
+            return (
+                fLower === cleanName + '.xlsx' ||
+                fLower.startsWith(cleanName + '_') ||
+                fLower.startsWith(cleanName + '-') ||
+                fLower === cleanNameUnderscore + '.xlsx' ||
+                fLower.startsWith(cleanNameUnderscore + '_') ||
+                fLower.startsWith(cleanNameUnderscore + '-')
+            );
         });
     } catch (err) {
         return false;
@@ -127,7 +136,7 @@ async function askRemainingSelection(interaction, { stepName, title, placeholder
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId('agency_run_all_remaining_btn')
-                .setLabel('🟢 Jalankan Semua')
+                .setLabel(`🟢 Jalankan Semua (${allRemainingValues.length} Outlet)`)
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId('agency_continue_btn')
@@ -142,7 +151,7 @@ async function askRemainingSelection(interaction, { stepName, title, placeholder
 
     const getEmbed = () => {
         const selectedArray = Array.from(selectedValues);
-        let description = `Pilih outlet spesifik yang ingin dijalankan dari menu, atau klik **Jalankan Semua** untuk memproses seluruh ${allRemainingValues.length} outlet tersisa.\n\n`;
+        let description = `Silakan pilih satu atau beberapa outlet dari menu dropdown di bawah lalu klik **Lanjutkan**, atau langsung klik **Jalankan Semua** jika ingin memproses semua ${allRemainingValues.length} outlet yang belum terunduh.\n\n`;
         if (selectedArray.length > 0) {
             const labelList = selectedArray.map(val => {
                 const found = options.find(opt => opt.value === val);
@@ -1004,8 +1013,41 @@ module.exports = {
                     const remainingGrab = rawOutlets.filter(name => !isOutletDownloaded('agency', 'grab', startDate, endDate, name));
 
                     if (remainingGrab.length === 0) {
-                        grabResultValues = [];
-                        step = 'outlet_shopee_remaining';
+                        const embed = makeProgressEmbed('Outlet Grab', '🏪 Grab: Jalankan yang Belum', '❌ **Tidak ada outlet Grab yang belum diunduh untuk periode ini.**', [
+                            { name: 'Tipe', value: 'AGENCY', inline: true },
+                            { name: 'Platform', value: 'ALL (Grab)', inline: true },
+                            { name: 'Periode', value: `${startDate} s/d ${endDate}`, inline: true }
+                        ], true, true);
+
+                        const row = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('agency_back_btn')
+                                .setLabel('⬅️ Kembali')
+                                .setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder()
+                                .setCustomId('agency_continue_btn')
+                                .setLabel('➡️ Lanjutkan')
+                                .setStyle(ButtonStyle.Success)
+                        );
+
+                        await lastInteraction.update({
+                            embeds: [embed],
+                            components: [row]
+                        });
+
+                        const msg = lastInteraction.message || await lastInteraction.fetchReply();
+                        const choice = await msg.awaitMessageComponent({
+                            filter: buttonI => buttonI.user.id === interaction.user.id && (buttonI.customId === 'agency_back_btn' || buttonI.customId === 'agency_continue_btn'),
+                            time: 300000
+                        });
+
+                        lastInteraction = choice;
+                        if (choice.customId === 'agency_back_btn') {
+                            step = 'scope';
+                        } else {
+                            grabResultValues = [];
+                            step = 'outlet_shopee_remaining';
+                        }
                         continue;
                     }
 
@@ -1030,7 +1072,7 @@ module.exports = {
                     });
 
                     if (result.status === 'back') {
-                        step = 'period';
+                        step = 'scope';
                         lastInteraction = result.lastInteraction;
                         continue;
                     }
@@ -1044,40 +1086,43 @@ module.exports = {
                     const remainingShopee = rawOutlets.filter(name => !isOutletDownloaded('agency', 'shopee', startDate, endDate, name));
 
                     if (remainingShopee.length === 0) {
-                        if (grabResultValues.length === 0) {
-                            const embed = makeProgressEmbed('Outlet Shopee', '🏪 Jalankan yang Belum', '🎉 **Semua outlet Grab & Shopee sudah terunduh/selesai diproses!**', [
-                                { name: 'Tipe', value: 'AGENCY', inline: true },
-                                { name: 'Platform', value: 'ALL', inline: true },
-                                { name: 'Periode', value: `${startDate} s/d ${endDate}`, inline: true }
-                            ], true, true);
+                        const embed = makeProgressEmbed('Outlet Shopee', '🏪 Shopee: Jalankan yang Belum', '❌ **Tidak ada outlet Shopee yang belum diunduh untuk periode ini.**', [
+                            { name: 'Tipe', value: 'AGENCY', inline: true },
+                            { name: 'Platform', value: 'ALL (Shopee)', inline: true },
+                            { name: 'Periode', value: `${startDate} s/d ${endDate}`, inline: true }
+                        ], true, true);
 
-                            const row = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId('agency_back_btn')
-                                    .setLabel('⬅️ Kembali')
-                                    .setStyle(ButtonStyle.Secondary)
-                            );
+                        const row = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('agency_back_btn')
+                                .setLabel('⬅️ Kembali')
+                                .setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder()
+                                .setCustomId('agency_continue_btn')
+                                .setLabel('➡️ Lanjutkan')
+                                .setStyle(ButtonStyle.Success)
+                        );
 
-                            await lastInteraction.update({
-                                embeds: [embed],
-                                components: [row]
-                            });
+                        await lastInteraction.update({
+                            embeds: [embed],
+                            components: [row]
+                        });
 
-                            const msg = lastInteraction.message || await lastInteraction.fetchReply();
-                            const i = await msg.awaitMessageComponent({
-                                filter: buttonI => buttonI.user.id === interaction.user.id && buttonI.customId === 'agency_back_btn',
-                                time: 300000
-                            });
+                        const msg = lastInteraction.message || await lastInteraction.fetchReply();
+                        const choice = await msg.awaitMessageComponent({
+                            filter: buttonI => buttonI.user.id === interaction.user.id && (buttonI.customId === 'agency_back_btn' || buttonI.customId === 'agency_continue_btn'),
+                            time: 300000
+                        });
 
-                            lastInteraction = i;
-                            step = 'scope';
-                            continue;
+                        lastInteraction = choice;
+                        if (choice.customId === 'agency_back_btn') {
+                            step = 'outlet_grab_remaining';
+                        } else {
+                            shopeeResultValues = [];
+                            selectedOutlets = grabResultValues.concat(shopeeResultValues);
+                            skipExisting = true;
+                            step = 'period';
                         }
-
-                        shopeeResultValues = [];
-                        selectedOutlets = grabResultValues;
-                        skipExisting = true;
-                        step = 'period';
                         continue;
                     }
 
@@ -1119,7 +1164,7 @@ module.exports = {
                     const remainingOutlets = weeklyOutlets.filter(name => !isOutletDownloaded('agency', platform, startDate, endDate, name));
 
                     if (remainingOutlets.length === 0) {
-                        const embed = makeProgressEmbed('Outlet', '🏪 Jalankan yang Belum', '🎉 **Semua outlet sudah terunduh/selesai diproses!** Tidak ada outlet yang tersisa untuk rentang tanggal ini.', [
+                        const embed = makeProgressEmbed('Outlet', '🏪 Jalankan yang Belum', `❌ **Tidak ada outlet ${platform.toUpperCase()} yang belum diunduh untuk periode ini.**`, [
                             { name: 'Tipe', value: 'AGENCY', inline: true },
                             { name: 'Platform', value: platform.toUpperCase(), inline: true },
                             { name: 'Periode', value: `${startDate} s/d ${endDate}`, inline: true }
@@ -1129,7 +1174,11 @@ module.exports = {
                             new ButtonBuilder()
                                 .setCustomId('agency_back_btn')
                                 .setLabel('⬅️ Kembali')
-                                .setStyle(ButtonStyle.Secondary)
+                                .setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder()
+                                .setCustomId('agency_continue_btn')
+                                .setLabel('➡️ Lanjutkan')
+                                .setStyle(ButtonStyle.Success)
                         );
 
                         await lastInteraction.update({
@@ -1138,13 +1187,19 @@ module.exports = {
                         });
 
                         const msg = lastInteraction.message || await lastInteraction.fetchReply();
-                        const i = await msg.awaitMessageComponent({
-                            filter: buttonI => buttonI.user.id === interaction.user.id && buttonI.customId === 'agency_back_btn',
+                        const choice = await msg.awaitMessageComponent({
+                            filter: buttonI => buttonI.user.id === interaction.user.id && (buttonI.customId === 'agency_back_btn' || buttonI.customId === 'agency_continue_btn'),
                             time: 300000
                         });
 
-                        lastInteraction = i;
-                        step = 'scope';
+                        lastInteraction = choice;
+                        if (choice.customId === 'agency_back_btn') {
+                            step = 'scope';
+                        } else {
+                            selectedOutlets = [];
+                            skipExisting = true;
+                            step = 'period';
+                        }
                         continue;
                     }
 
@@ -1187,19 +1242,27 @@ module.exports = {
                             name: 'Cakupan',
                             value: scope === 'all_outlets' ? 'Semua Outlet' :
                                 scope === 'select_merchant' ? `Merchant Terpilih (${selectedOutlets.length})` :
-                                    `Jalankan yang Belum (${selectedOutlets.length} terpilih)`,
+                                    selectedOutlets.length === 0 ? 'Jalankan yang Belum (Tidak ada - semua sudah terunduh)' :
+                                        `Jalankan yang Belum (${selectedOutlets.length} terpilih)`,
                             inline: true
                         },
                         { name: 'Periode', value: `${startDate} s/d ${endDate}`, inline: true }
                     ];
 
                     const getConfirmEmbed = () => {
+                        let outletInfo = '';
+                        if (scope === 'select_merchant' || scope === 'run_remaining') {
+                            const names = selectedOutlets.length > 0 ? selectedOutlets.join(', ') : '(Tidak ada - semua sudah terunduh)';
+                            const displayedNames = names.length > 300 ? names.substring(0, 297) + '...' : names;
+                            outletInfo = `\n\n🏪 **Outlet Terpilih:** ${displayedNames}`;
+                        }
                         return makeProgressEmbed(
                             'Konfirmasi',
                             '📋 Konfirmasi Pipeline',
                             'Silakan pilih mode untuk menjalankan pipeline weekly:\n\n' +
                             '🟢 **Jalankan Semua**: Memproses ulang seluruh outlet tanpa terkecuali.\n' +
-                            '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet yang belum selesai atau belum terunduh laporannya di server.',
+                            '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet yang belum selesai atau belum terunduh laporannya di server.' +
+                            outletInfo,
                             currentFields,
                             (scope === 'select_merchant' || scope === 'run_remaining'),
                             platform === 'all'
