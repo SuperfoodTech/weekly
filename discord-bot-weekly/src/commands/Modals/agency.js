@@ -358,7 +358,6 @@ async function getWeeklyOutlets(platform) {
 const makeProgressEmbed = (currentStepName, title, description, fields = [], hasOutletStep = true, isAllPlatform = false) => {
     const allSteps = [
         { name: 'Aplikator', icon: '📱' },
-        { name: 'Periode', icon: '📅' },
         { name: 'Cakupan', icon: '🏢' }
     ];
     if (hasOutletStep) {
@@ -369,7 +368,10 @@ const makeProgressEmbed = (currentStepName, title, description, fields = [], has
             allSteps.push({ name: 'Outlet', icon: '🏪' });
         }
     }
-    allSteps.push({ name: 'Konfirmasi', icon: '📋' });
+    allSteps.push(
+        { name: 'Periode', icon: '📅' },
+        { name: 'Konfirmasi', icon: '📋' }
+    );
 
     let progressStr = '';
     const currentStepIdx = allSteps.findIndex(s => s.name === currentStepName);
@@ -620,7 +622,7 @@ module.exports = {
 
                     platform = result.values[0];
                     lastInteraction = result.lastInteraction;
-                    step = 'period';
+                    step = 'scope';
 
                 } else if (step === 'period') {
                     const today = new Date();
@@ -646,7 +648,14 @@ module.exports = {
 
                     const currentFields = [
                         { name: 'Tipe', value: 'AGENCY', inline: true },
-                        { name: 'Platform', value: platform.toUpperCase(), inline: true }
+                        { name: 'Platform', value: platform.toUpperCase(), inline: true },
+                        {
+                            name: 'Cakupan',
+                            value: scope === 'all_outlets' ? 'Semua Outlet' :
+                                scope === 'select_merchant' ? `Merchant Terpilih (${selectedOutlets.length})` :
+                                `Jalankan yang Belum (${selectedOutlets.length})`,
+                            inline: true
+                        }
                     ];
 
                     let errorMsg = null;
@@ -656,7 +665,7 @@ module.exports = {
                         if (errorMsg) {
                             desc = `❌ **Error:** ${errorMsg}\n\n` + desc;
                         }
-                        return makeProgressEmbed('Periode', '📅 Pilih Periode Laporan', desc, currentFields, true, platform === 'all');
+                        return makeProgressEmbed('Periode', '📅 Pilih Periode Laporan', desc, currentFields, scope !== 'all_outlets', platform === 'all');
                     };
 
                     const getPeriodComponents = () => {
@@ -807,14 +816,20 @@ module.exports = {
                     const periodResults = await getPeriodChoice();
                     if (periodResults.status === 'back') {
                         lastInteraction = periodResults.lastInteract;
-                        step = 'aplikator';
+                        if (scope === 'all_outlets') {
+                            step = 'scope';
+                        } else if (scope === 'select_merchant') {
+                            step = platform === 'all' ? 'outlet_shopee' : 'outlet_single';
+                        } else if (scope === 'run_remaining') {
+                            step = platform === 'all' ? 'outlet_shopee_remaining' : 'outlet_single_remaining';
+                        }
                         continue;
                     }
 
                     startDate = periodResults.start;
                     endDate = periodResults.end;
                     lastInteraction = periodResults.lastInteract;
-                    step = 'scope';
+                    step = 'confirmation';
                     continue;
 
                 } else if (step === 'scope') {
@@ -951,7 +966,7 @@ module.exports = {
                     shopeeResultValues = result.values;
                     selectedOutlets = grabResultValues.concat(shopeeResultValues);
                     lastInteraction = result.lastInteraction;
-                    step = 'confirmation';
+                    step = 'period';
 
                 } else if (step === 'outlet_single') {
                     const weeklyOutlets = await getWeeklyOutlets(platform);
@@ -993,7 +1008,7 @@ module.exports = {
 
                     selectedOutlets = result.values;
                     lastInteraction = result.lastInteraction;
-                    step = 'confirmation';
+                    step = 'period';
 
                 } else if (step === 'outlet_grab_remaining') {
                     const rawOutlets = await getWeeklyOutlets('grab');
@@ -1108,7 +1123,7 @@ module.exports = {
                             shopeeResultValues = [];
                             selectedOutlets = grabResultValues.concat(shopeeResultValues);
                             skipExisting = true;
-                            step = 'confirmation';
+                            step = 'period';
                         }
                         continue;
                     }
@@ -1144,7 +1159,7 @@ module.exports = {
                     selectedOutlets = grabResultValues.concat(shopeeResultValues);
                     skipExisting = true;
                     lastInteraction = result.lastInteraction;
-                    step = 'confirmation';
+                    step = 'period';
 
                 } else if (step === 'outlet_single_remaining') {
                     const weeklyOutlets = await getWeeklyOutlets(platform);
@@ -1185,7 +1200,7 @@ module.exports = {
                         } else {
                             selectedOutlets = [];
                             skipExisting = true;
-                            step = 'confirmation';
+                            step = 'period';
                         }
                         continue;
                     }
@@ -1219,7 +1234,7 @@ module.exports = {
                     selectedOutlets = result.values;
                     skipExisting = true;
                     lastInteraction = result.lastInteraction;
-                    step = 'confirmation';
+                    step = 'period';
 
                 } else if (step === 'confirmation') {
                     const currentFields = [
@@ -1237,19 +1252,25 @@ module.exports = {
                     ];
 
                     const getConfirmEmbed = () => {
-                        let outletInfo = '';
-                        if (scope === 'select_merchant' || scope === 'run_remaining') {
-                            const names = selectedOutlets.length > 0 ? selectedOutlets.join(', ') : '(Tidak ada - semua sudah terunduh)';
-                            const displayedNames = names.length > 300 ? names.substring(0, 297) + '...' : names;
-                            outletInfo = `\n\n🏪 **Outlet Terpilih:** ${displayedNames}`;
+                        const outletInfo = selectedOutlets.length > 0 ?
+                            `\n\n📌 **Outlet Terpilih (${selectedOutlets.length}):**\n${selectedOutlets.join(', ')}` : '';
+
+                        let desc = 'Silakan konfirmasi pilihan Anda sebelum menjalankan pipeline:\n\n';
+                        if (scope === 'all_outlets') {
+                            desc += '🟢 **Jalankan Semua**: Memproses ulang seluruh outlet tanpa terkecuali.\n' +
+                                    '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet yang laporannya belum ada di server.';
+                        } else if (scope === 'select_merchant') {
+                            desc += '🟢 **Jalankan Terpilih**: Memproses ulang semua outlet terpilih.\n' +
+                                    '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet terpilih yang laporannya belum ada di server.';
+                        } else { // run_remaining
+                            desc += '🟢 **Jalankan Terpilih**: Memproses outlet terpilih yang laporannya belum lengkap di server.';
                         }
+                        desc += outletInfo;
+
                         return makeProgressEmbed(
                             'Konfirmasi',
-                            '📋 Konfirmasi Pipeline',
-                            'Silakan pilih mode untuk menjalankan pipeline weekly:\n\n' +
-                            '🟢 **Jalankan Semua**: Memproses ulang seluruh outlet tanpa terkecuali.\n' +
-                            '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet yang belum selesai atau belum terunduh laporannya di server.' +
-                            outletInfo,
+                            '📋 Konfirmasi Laporan',
+                            desc,
                             currentFields,
                             (scope === 'select_merchant' || scope === 'run_remaining'),
                             platform === 'all'
@@ -1257,22 +1278,46 @@ module.exports = {
                     };
 
                     const getConfirmComponents = () => {
-                        return [
-                            new ActionRowBuilder().addComponents(
+                        const buttons = [];
+                        if (scope === 'all_outlets') {
+                            buttons.push(
                                 new ButtonBuilder()
                                     .setCustomId('agency_confirm_all_btn')
-                                    .setLabel('🟢 Jalankan Semua')
+                                    .setLabel('Jalankan Semua')
                                     .setStyle(ButtonStyle.Success),
                                 new ButtonBuilder()
                                     .setCustomId('agency_confirm_skip_btn')
-                                    .setLabel('🟠 Lewati yang Sudah Ada')
-                                    .setStyle(ButtonStyle.Primary),
+                                    .setLabel('Lewati yang Sudah Ada')
+                                    .setStyle(ButtonStyle.Primary)
+                            );
+                        } else if (scope === 'select_merchant') {
+                            buttons.push(
                                 new ButtonBuilder()
-                                    .setCustomId('agency_back_btn')
-                                    .setLabel('⬅️ Kembali')
-                                    .setStyle(ButtonStyle.Secondary)
-                            )
-                        ];
+                                    .setCustomId('agency_confirm_all_btn')
+                                    .setLabel('Jalankan Terpilih')
+                                    .setStyle(ButtonStyle.Success),
+                                new ButtonBuilder()
+                                    .setCustomId('agency_confirm_skip_btn')
+                                    .setLabel('Lewati yang Sudah Ada')
+                                    .setStyle(ButtonStyle.Primary)
+                            );
+                        } else { // run_remaining
+                            buttons.push(
+                                new ButtonBuilder()
+                                    .setCustomId('agency_confirm_all_btn')
+                                    .setLabel('Jalankan Terpilih')
+                                    .setStyle(ButtonStyle.Success)
+                            );
+                        }
+
+                        buttons.push(
+                            new ButtonBuilder()
+                                .setCustomId('agency_back_btn')
+                                .setLabel('⬅️ Kembali')
+                                .setStyle(ButtonStyle.Secondary)
+                        );
+
+                        return [new ActionRowBuilder().addComponents(buttons)];
                     };
 
                     await lastInteraction.update({
@@ -1316,13 +1361,7 @@ module.exports = {
                     const confirmResults = await getConfirmChoice();
                     if (confirmResults.status === 'back') {
                         lastInteraction = confirmResults.lastInteract;
-                        if (scope === 'all_outlets') {
-                            step = 'scope';
-                        } else if (scope === 'select_merchant') {
-                            step = platform === 'all' ? 'outlet_shopee' : 'outlet_single';
-                        } else if (scope === 'run_remaining') {
-                            step = platform === 'all' ? 'outlet_shopee_remaining' : 'outlet_single_remaining';
-                        }
+                        step = 'period';
                         continue;
                     }
 

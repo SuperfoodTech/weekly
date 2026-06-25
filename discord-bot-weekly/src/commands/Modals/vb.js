@@ -346,7 +346,6 @@ async function getVBOutlets(platform) {
 const makeProgressEmbed = (currentStepName, title, description, fields = [], hasOutletStep = true, isAllPlatform = false) => {
     const allSteps = [
         { name: 'Aplikator', icon: '📱' },
-        { name: 'Periode', icon: '📅' },
         { name: 'Cakupan', icon: '🏢' }
     ];
     if (hasOutletStep) {
@@ -357,7 +356,10 @@ const makeProgressEmbed = (currentStepName, title, description, fields = [], has
             allSteps.push({ name: 'Outlet', icon: '🏪' });
         }
     }
-    allSteps.push({ name: 'Konfirmasi', icon: '📋' });
+    allSteps.push(
+        { name: 'Periode', icon: '📅' },
+        { name: 'Konfirmasi', icon: '📋' }
+    );
 
     let progressStr = '';
     const currentStepIdx = allSteps.findIndex(s => s.name === currentStepName);
@@ -1238,19 +1240,27 @@ module.exports = {
                     ];
 
                     const getConfirmEmbed = () => {
-                        let outletInfo = '';
-                        if (scope === 'select_merchant' || scope === 'run_remaining') {
-                            const names = selectedOutlets.length > 0 ? selectedOutlets.join(', ') : '(Tidak ada - semua sudah terunduh)';
-                            const displayedNames = names.length > 300 ? names.substring(0, 297) + '...' : names;
-                            outletInfo = `\n\n🏪 **Outlet Terpilih:** ${displayedNames}`;
+                        const names = selectedOutlets.length > 0 ? selectedOutlets.join(', ') : '(Tidak ada - semua sudah terunduh)';
+                        const displayedNames = names.length > 300 ? names.substring(0, 297) + '...' : names;
+                        const outletInfo = (scope === 'select_merchant' || scope === 'run_remaining') ?
+                            `\n\n📌 **Outlet Terpilih:** ${displayedNames}` : '';
+
+                        let desc = 'Silakan konfirmasi pilihan Anda sebelum menjalankan pipeline VB:\n\n';
+                        if (scope === 'all_outlets') {
+                            desc += '🟢 **Jalankan Semua**: Memproses ulang seluruh outlet tanpa terkecuali.\n' +
+                                    '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet yang laporannya belum ada di server.';
+                        } else if (scope === 'select_merchant') {
+                            desc += '🟢 **Jalankan Terpilih**: Memproses ulang semua outlet terpilih.\n' +
+                                    '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet terpilih yang laporannya belum ada di server.';
+                        } else { // run_remaining
+                            desc += '🟢 **Jalankan Terpilih**: Memproses outlet terpilih yang laporannya belum lengkap di server.';
                         }
+                        desc += outletInfo;
+
                         return makeProgressEmbed(
                             'Konfirmasi',
                             '📋 Konfirmasi Pipeline',
-                            'Silakan pilih mode untuk menjalankan pipeline weekly VB:\n\n' +
-                            '🟢 **Jalankan Semua**: Memproses ulang seluruh outlet tanpa terkecuali.\n' +
-                            '🟠 **Lewati yang Sudah Ada**: Hanya memproses outlet yang belum selesai atau belum terunduh laporannya di server.' +
-                            outletInfo,
+                            desc,
                             currentFields,
                             (scope === 'select_merchant' || scope === 'run_remaining'),
                             platform === 'all'
@@ -1258,22 +1268,46 @@ module.exports = {
                     };
 
                     const getConfirmComponents = () => {
-                        return [
-                            new ActionRowBuilder().addComponents(
+                        const buttons = [];
+                        if (scope === 'all_outlets') {
+                            buttons.push(
                                 new ButtonBuilder()
                                     .setCustomId('vb_confirm_all_btn')
-                                    .setLabel('🟢 Jalankan Semua')
+                                    .setLabel('Jalankan Semua')
                                     .setStyle(ButtonStyle.Success),
                                 new ButtonBuilder()
                                     .setCustomId('vb_confirm_skip_btn')
-                                    .setLabel('🟠 Lewati yang Sudah Ada')
-                                    .setStyle(ButtonStyle.Primary),
+                                    .setLabel('Lewati yang Sudah Ada')
+                                    .setStyle(ButtonStyle.Primary)
+                            );
+                        } else if (scope === 'select_merchant') {
+                            buttons.push(
                                 new ButtonBuilder()
-                                    .setCustomId('vb_back_btn')
-                                    .setLabel('⬅️ Kembali')
-                                    .setStyle(ButtonStyle.Secondary)
-                            )
-                        ];
+                                    .setCustomId('vb_confirm_all_btn')
+                                    .setLabel('Jalankan Terpilih')
+                                    .setStyle(ButtonStyle.Success),
+                                new ButtonBuilder()
+                                    .setCustomId('vb_confirm_skip_btn')
+                                    .setLabel('Lewati yang Sudah Ada')
+                                    .setStyle(ButtonStyle.Primary)
+                            );
+                        } else { // run_remaining
+                            buttons.push(
+                                new ButtonBuilder()
+                                    .setCustomId('vb_confirm_all_btn')
+                                    .setLabel('Jalankan Terpilih')
+                                    .setStyle(ButtonStyle.Success)
+                            );
+                        }
+
+                        buttons.push(
+                            new ButtonBuilder()
+                                .setCustomId('vb_back_btn')
+                                .setLabel('⬅️ Kembali')
+                                .setStyle(ButtonStyle.Secondary)
+                        );
+
+                        return [new ActionRowBuilder().addComponents(buttons)];
                     };
 
                     await lastInteraction.update({
