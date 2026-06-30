@@ -34,8 +34,9 @@ from rich.status import Status
 from rich.text import Text
 from rich.columns import Columns
 from rich.theme import Theme
-
-load_dotenv(override=True)
+# Load .env relative to this file's directory
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(env_path, override=True)
 
 # Initialize Rich Console
 custom_theme = Theme({
