@@ -543,7 +543,14 @@ def login_outlet_gofood_flow(outlet_info):
         try:
             import json
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            config_path = os.path.join(base_dir, "config.json")
+            weekly_dir = os.path.dirname(base_dir)
+            agency_config_path = os.path.join(weekly_dir, "agency", "config.json")
+            
+            if os.path.exists(agency_config_path):
+                config_path = agency_config_path
+            else:
+                config_path = os.path.join(base_dir, "config.json")
+                
             if os.path.exists(config_path):
                 with open(config_path, 'r') as f:
                     config_data = json.load(f)

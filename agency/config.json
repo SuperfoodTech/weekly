@@ -1,5 +1,6 @@
 {
   "headless_grab": true,
   "headless_shopee": false,
+  "headless_gofood": false,
   "max_concurrency": 1
 }
