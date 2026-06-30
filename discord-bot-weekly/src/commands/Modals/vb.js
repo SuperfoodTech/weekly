@@ -308,9 +308,6 @@ async function getVBOutlets(platform) {
             const name = cols[portalIdx];
             if (!name || name === '-') continue;
 
-            // Exclude portal L/l
-            if (name.toLowerCase() === 'l') continue;
-
             // Notes filter: exclude if notes contains "restricted"
             if (targetNotesFilter && notesIdx !== -1 && cols.length > notesIdx) {
                 const notes = cols[notesIdx].toLowerCase();

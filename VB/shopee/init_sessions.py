@@ -106,8 +106,6 @@ def get_vb_portals() -> list:
                 except Exception as err:
                     log.error(f"❌ Failed to read cache: {err}")
                     
-    # Filter out portal_l
-    portals = [p for p in portals if p.get("account_name", "").lower() != "portal_l"]
     return portals
 
 def initialize_all_sessions(headless_on_login=False, only_portal=None):
