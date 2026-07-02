@@ -167,7 +167,8 @@ function runWeeklyPipeline(formData, onLog = () => { }) {
             OFD_DISCORD_MODE: '1',
             OFD_WEBHOOK_URL: process.env.WEBHOOK_URL || '',
             OFD_CHANNEL_ID: formData.channelId || '',
-            PYTHONUNBUFFERED: '1'
+            PYTHONUNBUFFERED: '1',
+            HEADLESS: 'true'
         };
 
         // ── Argumen CLI ─────────────────────────────────────────────
