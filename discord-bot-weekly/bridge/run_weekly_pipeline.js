@@ -94,10 +94,16 @@ function releaseJobLock(onLog = console.log) {
 
 function controlWarmer(action, onLog = console.log) {
     return new Promise((resolve) => {
+        const warmerService = process.env.WARMER_SERVICE_NAME;
+        if (!warmerService) {
+            // Jika tidak ada konfigurasi warmer, langsung return success
+            return resolve(true);
+        }
+
         const { exec } = require('child_process');
         const cmdMap = {
-            'pause': 'sudo systemctl stop shopee-warmer',
-            'unpause': 'sudo systemctl start shopee-warmer'
+            'pause': `sudo systemctl stop ${warmerService}`,
+            'unpause': `sudo systemctl start ${warmerService}`
         };
         const cmd = cmdMap[action];
         if (!cmd) {
@@ -108,10 +114,10 @@ function controlWarmer(action, onLog = console.log) {
         onLog(`🔌 [WARMER] Executing: ${cmd}...`);
         exec(cmd, (err, stdout, stderr) => {
             if (err) {
-                onLog(`⚠️ [WARMER] Gagal melakukan ${action} pada shopee-warmer.service: ${err.message}`);
+                onLog(`⚠️ [WARMER] Gagal melakukan ${action} pada ${warmerService}: ${err.message}`);
                 resolve(false);
             } else {
-                onLog(`✅ [WARMER] Service shopee-warmer berhasil di-${action === 'pause' ? 'hentikan' : 'aktifkan kembali'}.`);
+                onLog(`✅ [WARMER] Service ${warmerService} berhasil di-${action === 'pause' ? 'hentikan' : 'aktifkan kembali'}.`);
                 resolve(true);
             }
         });
