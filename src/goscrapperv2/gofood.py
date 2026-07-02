@@ -34,9 +34,8 @@ from rich.status import Status
 from rich.text import Text
 from rich.columns import Columns
 from rich.theme import Theme
-# Load .env relative to this file's directory
-env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-load_dotenv(env_path, override=True)
+
+load_dotenv(override=True)
 
 # Initialize Rich Console
 custom_theme = Theme({
@@ -65,6 +64,58 @@ def to_csv_url(url):
 
 
 GLOBAL_OUTPUT_DIR = None
+
+# ── Session JSON Cache ────────────────────────────────────────────────
+
+def _session_cache_path(identifier: str) -> str:
+    """Return path to session JSON cache file for a given email/phone identifier."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    sessions_dir = os.path.join(base_dir, 'sessions')
+    os.makedirs(sessions_dir, exist_ok=True)
+    safe_id = re.sub(r'[^a-zA-Z0-9@._-]', '_', identifier)
+    return os.path.join(sessions_dir, f"{safe_id}.json")
+
+
+def _load_session_token(identifier: str) -> str:
+    """Load token from session JSON cache. Returns empty string if not found or expired."""
+    path = _session_cache_path(identifier)
+    if not os.path.exists(path):
+        return ''
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+        token = data.get('token', '')
+        # Opsional: cek TTL jika ada (dalam detik)
+        saved_at = data.get('saved_at', 0)
+        ttl = data.get('ttl', 0)  # 0 = tidak ada expiry
+        if ttl > 0 and (time.time() - saved_at) > ttl:
+            console.print(f"[dim]Session cache untuk '{identifier}' sudah kedaluwarsa.[/dim]")
+            return ''
+        return token
+    except Exception as e:
+        console.print(f"[dim]Gagal membaca session cache '{identifier}': {e}[/dim]")
+        return ''
+
+
+def _save_session_token(identifier: str, token: str, meta: dict = None):
+    """Save token to session JSON cache."""
+    path = _session_cache_path(identifier)
+    data = {
+        'token': token,
+        'saved_at': time.time(),
+        'ttl': 0,  # 0 = tidak ada expiry
+    }
+    if meta:
+        data.update(meta)
+    try:
+        lock_path = path + '.lock'
+        lock = _FileLock(lock_path, timeout=10)
+        with lock:
+            with open(path, 'w') as f:
+                json.dump(data, f, indent=2)
+    except Exception as e:
+        console.print(f"[dim]Gagal menyimpan session cache '{identifier}': {e}[/dim]")
+
 
 
 
@@ -118,12 +169,36 @@ def fetch_gofood_accounts_from_sheet(task="2"):
         return None
 
     accounts = []
-    if task == "1":
+    if task == "1" or task == "3":
+        # Jika task 3, ambil sheet Agency untuk mapping BD -> Phone
+        bd_to_phone = {}
+        if task == "3":
+            try:
+                creds_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRYSUnKOqk29LCktTxdb0wPLbWMbRaWRP3eC_UA4AwYod1FW6zDMhtLMC5ghIvot2B8upCDfBsn-TCP/pub?gid=565510790&single=true&output=csv"
+                import requests as _req
+                c_resp = _req.get(creds_url, timeout=15)
+                c_resp.raise_for_status()
+                creds_rows = list(csv.reader(c_resp.text.splitlines()))
+                if creds_rows and len(creds_rows) > 1:
+                    c_header = [str(h).strip().lower() for h in creds_rows[0]]
+                    bd_idx = c_header.index('bd') if 'bd' in c_header else -1
+                    phone_idx = c_header.index('phone') if 'phone' in c_header else -1
+                    if bd_idx != -1 and phone_idx != -1:
+                        for cr in creds_rows[1:]:
+                            if len(cr) > bd_idx and len(cr) > phone_idx:
+                                bd_val = str(cr[bd_idx]).strip().lower()
+                                phone_val = str(cr[phone_idx]).strip()
+                                if bd_val and phone_val:
+                                    bd_to_phone[bd_val] = phone_val
+            except Exception as e:
+                console.print(f"[warning]⚠️ Gagal mengambil credentials Agency: {e}[/warning]")
+
         # Parsing format sheet Baseline
         idx_aplikasi   = col_idx(['aplikasi'])
         idx_outlet     = col_idx(['nama outlet'])
         idx_email_fm1 = col_idx(['email foodmaster1'])
         idx_email_fm2 = col_idx(['email foodmaster2'])
+        idx_bd         = col_idx(['bd'])
 
         for row in reader_rows[1:]:
             if idx_aplikasi is None or len(row) <= idx_aplikasi:
@@ -134,25 +209,40 @@ def fetch_gofood_accounts_from_sheet(task="2"):
 
             nama = str(row[idx_outlet]).strip() if idx_outlet is not None and len(row) > idx_outlet else ''
             
-            # Ambil Email FoodMaster2 sebagai sekunder
-            email_fm2 = ""
-            if idx_email_fm2 is not None and len(row) > idx_email_fm2:
-                email_fm2 = str(row[idx_email_fm2]).strip()
-            
-            # Email FoodMaster1 sebagai prioritas utama
-            email_fm1 = ""
-            if idx_email_fm1 is not None and len(row) > idx_email_fm1:
-                email_fm1 = str(row[idx_email_fm1]).strip()
-
-            emails = []
-            if email_fm1 and email_fm1 != "-":
-                emails.append(email_fm1)
-            if email_fm2 and email_fm2 != "-" and email_fm2 != email_fm1:
-                emails.append(email_fm2)
+            # Jika task 3, gunakan kredensial dari Agency Sheet (berdasarkan BD)
+            if task == "3":
+                bd_name = str(row[idx_bd]).strip().lower() if idx_bd is not None and len(row) > idx_bd else ''
+                phone = bd_to_phone.get(bd_name, "")
+                # Jika tidak ada di mapping, gunakan phone default allvbadmin atau lewati
+                if not phone:
+                    phone = bd_to_phone.get("all", "") # fallback ke BD 'all' jika ada
                 
-            primary_email = emails[0] if emails else ""
+                if not phone:
+                    continue # Skip if no phone found for agency
+                    
+                primary_email = ""
+                emails = []
+            else:
+                # Task 1 (Baseline standard)
+                phone = "-"
+                # Ambil Email FoodMaster2 sebagai sekunder
+                email_fm2 = ""
+                if idx_email_fm2 is not None and len(row) > idx_email_fm2:
+                    email_fm2 = str(row[idx_email_fm2]).strip()
+                
+                # Email FoodMaster1 sebagai prioritas utama
+                email_fm1 = ""
+                if idx_email_fm1 is not None and len(row) > idx_email_fm1:
+                    email_fm1 = str(row[idx_email_fm1]).strip()
+    
+                emails = []
+                if email_fm1 and email_fm1 != "-":
+                    emails.append(email_fm1)
+                if email_fm2 and email_fm2 != "-" and email_fm2 != email_fm1:
+                    emails.append(email_fm2)
+                    
+                primary_email = emails[0] if emails else ""
 
-            phone  = "-"
             cabang = ""
             store_id = ""
 
@@ -544,14 +634,7 @@ def login_outlet_gofood_flow(outlet_info):
         try:
             import json
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            weekly_dir = os.path.dirname(base_dir)
-            agency_config_path = os.path.join(weekly_dir, "agency", "config.json")
-            
-            if os.path.exists(agency_config_path):
-                config_path = agency_config_path
-            else:
-                config_path = os.path.join(base_dir, "config.json")
-                
+            config_path = os.path.join(base_dir, "config.json")
             if os.path.exists(config_path):
                 with open(config_path, 'r') as f:
                     config_data = json.load(f)
@@ -843,19 +926,19 @@ def login_outlet_gofood_flow(outlet_info):
 
                         time.sleep(1.0)
 
-                        if time.time() - start_time > 20:
-                            # Fallback URL Check: Jika setelah 20 detik masih stuck di URL login, anggap butuh retry/verifikasi
+                        if time.time() - start_time > 5:
+                            # Fallback URL Check: Jika setelah 5 detik masih stuck di URL login, anggap butuh retry/verifikasi
                             try:
                                 if "/auth/login" in page.url:
-                                    console.print("   [warning]⚠️ (Fallback) Timeout 20 detik: URL masih stuck di halaman login. Mempercepat percobaan ulang...[/warning]")
+                                    console.print("   [warning]⚠️ (Fallback) Timeout 5 detik: URL masih stuck di halaman login. Mempercepat percobaan ulang...[/warning]")
                                     # Menambah kompensasi karena bisa jadi ini peringatan verifikasi yang terlewat dari deteksi teks
                                     max_login_attempts = 3
                                     break
                             except Exception:
                                 pass
 
-                        if time.time() - start_time > 35:
-                            console.print("[warning]⚠️ Timeout 35 detik menunggu access_token.[/warning]")
+                        if time.time() - start_time > 15:
+                            console.print("[warning]⚠️ Timeout 15 detik menunggu access_token.[/warning]")
                             break
 
                 except KeyboardInterrupt:
@@ -1471,99 +1554,26 @@ def ambil_data_analytics(write_header=True, start_date=None, end_date=None, retu
 
     pass
 
-    # --- 5. TULIS KE FILE EXCEL ---
-    try:
-        if write_header or not os.path.exists(excel_filename):
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            headers_excel = [
-                'Nomor HP', 'Outlet Name', 'Cabang', 'Store ID', 'Tanggal', 'Penjualan Kotor', 'Biaya Komisi', 
-                'Pengeluaran Iklan & Diskon', 'Total Potongan Ojol', 'Penjualan Bersih', 
-                'Rata-Rata Order per Cust', 'Order Sukses', 'Order Batal', 'Total Order'
-            ]
-            ws.append(headers_excel)
-        else:
-            # Pastikan file tidak terkunci sebelum membuka
-            try:
-                wb = openpyxl.load_workbook(excel_filename)
-                ws = wb.active
-            except Exception as load_err:
-                print(f"⚠️ File Excel terkunci atau terkorupsi ({load_err}). Membuat file baru...")
-                wb = openpyxl.Workbook()
-                ws = wb.active
-                headers_excel = [
-                    'Nomor HP', 'Outlet Name', 'Cabang', 'Store ID', 'Tanggal', 'Penjualan Kotor', 'Biaya Komisi', 
-                    'Pengeluaran Iklan & Diskon', 'Total Potongan Ojol', 'Penjualan Bersih', 
-                    'Rata-Rata Order per Cust', 'Order Sukses', 'Order Batal', 'Total Order'
-                ]
-                ws.append(headers_excel)
-    except Exception as e:
-        print(f"❌ Error saat membuat/membuka workbook: {e}")
-        return
+    # --- 5. TULIS KE FILE EXCEL (DINONAKTIFKAN SESUAI PERMINTAAN) ---
+    # File revenue_... (Format Vertikal) tidak lagi dihasilkan
+    pass
 
+    # --- 6. EXPORT KE EXCEL PER OUTLET (Raw Data) ---
     username = os.getenv('ACTIVE_NOMOR_HP', 'Tidak Diketahui')
-    created_on_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     nama_outlet = os.getenv('ACTIVE_NAMA_OUTLET', 'Tidak Tersedia')
     cabang = os.getenv('ACTIVE_CABANG', 'Tidak Tersedia')
     store_id = os.getenv('ACTIVE_STORE_ID', 'Tidak Tersedia')
 
-    for idx, (raw_date, label) in enumerate(period_iter):
-        omzet = int(totals[label]['revenue'])
-        omzet_bersih = int(totals[label]['net_revenue'])
-        komisi = int(totals[label]['komisi'])
-        pendapatan_ojol = int(totals[label]['ojol_commission'])
-        order = int(totals[label]['orders'])
-        iklan = int(totals[label].get('pengeluaran_iklan', 0))
-        order_sukses = int(totals[label]['orders'])
-        order_batal = int(totals[label]['order_batal'])
-        
-        is_last_row = (idx == num_periods - 1)
-        rata_rata_order_per_cust = int(omzet / order_sukses) if order_sukses > 0 else 0
-        total_order_row = order_sukses + order_batal
-        
-        row_data = [
-            username,
-            nama_outlet,
-            cabang,
-            store_id,
-            raw_date,
-            omzet,
-            komisi,
-            iklan,
-            pendapatan_ojol,
-            omzet_bersih,
-            rata_rata_order_per_cust,
-            order_sukses,
-            order_batal,
-            total_order_row
-        ]
-        ws.append(row_data)
-
-    # Save dengan absolute path untuk clarity
-    abs_excel_path = os.path.abspath(excel_filename)
-    try:
-        wb.save(abs_excel_path)
-        wb.close()  # PENTING: Tutup workbook setelah save
-        
-        if custom_mode:
-            print(f"\n✅ Berhasil menyimpan data harian ke:")
-            print(f"   {abs_excel_path} (Format Vertikal)")
-        else:
-            print(f"\n✅ Berhasil menyimpan data ke:")
-            print(f"   {abs_excel_path} (Format Vertikal)")
-    except Exception as e:
-        print(f"\n❌ Error saat menyimpan file Excel: {e}")
-        print(f"   Path: {abs_excel_path}")
-        return
-
-    # --- 6. EXPORT KE EXCEL PER OUTLET (Raw Data) ---
     safe_name_str = f"{_outlet}_{_cabang}_{store_id}" if _cabang and _cabang.lower() != 'tanpa cabang' else f"{_outlet}_{store_id}"
     safe_outlet = safe_name_str.strip().replace(" ", "_").replace("/", "_").replace("\\", "_")
     if not safe_outlet or safe_outlet == "Tidak_Tersedia":
         safe_outlet = "Unknown_Outlet"
         
     date_folder = f"{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}"
-    raw_gofood_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'laporan', 'gofood', 'raw', date_folder)
+    if GLOBAL_OUTPUT_DIR:
+        raw_gofood_dir = GLOBAL_OUTPUT_DIR
+    else:
+        raw_gofood_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'laporan', 'gofood', date_folder)
     os.makedirs(raw_gofood_dir, exist_ok=True)
     
     base_raw_excel_filename = os.path.join(raw_gofood_dir, f"{safe_outlet}.xlsx")
@@ -1580,9 +1590,8 @@ def ambil_data_analytics(write_header=True, start_date=None, end_date=None, retu
         wb_raw = openpyxl.Workbook()
         ws_raw = wb_raw.active
         headers_excel = [
-            'Nomor HP', 'Outlet Name', 'Cabang', 'Store ID', 'Tanggal', 'Penjualan Kotor', 'Biaya Komisi', 
-            'Pengeluaran Iklan & Diskon', 'Total Potongan Ojol', 'Penjualan Bersih', 
-            'Rata-Rata Order per Cust', 'Order Sukses', 'Order Batal', 'Total Order'
+            'Tanggal', 'Outlet Name', 'Store ID', 'Penjualan Kotor', 'Biaya Komisi', 
+            'Pengeluaran Iklan & Diskon', 'Order Sukses', 'Order Batal'
         ]
         ws_raw.append(headers_excel)
                 
@@ -1597,23 +1606,17 @@ def ambil_data_analytics(write_header=True, start_date=None, end_date=None, retu
             order_sukses = int(totals[label]['orders'])
             order_batal = int(totals[label]['order_batal'])
             rata_rata_order_per_cust = int(omzet / order_sukses) if order_sukses > 0 else 0
-            total_order_row = order_sukses + order_batal
+            total_order_row = order_sukses
             
             row_data = [
-                username,
-                nama_outlet,
-                cabang,
-                store_id,
                 raw_date,
+                nama_outlet,
+                store_id,
                 omzet,
                 komisi,
                 iklan,
-                pendapatan_ojol,
-                omzet_bersih,
-                rata_rata_order_per_cust,
                 order_sukses,
-                order_batal,
-                total_order_row
+                order_batal
             ]
             ws_raw.append(row_data)
             
@@ -1623,18 +1626,7 @@ def ambil_data_analytics(write_header=True, start_date=None, end_date=None, retu
         print(f"✅ Juga di-export ke Excel Raw per outlet:")
         print(f"   {abs_raw_excel_path}")
 
-        # --- Kirim ke GSheet Harian ---
-        if "--no-sheet" not in sys.argv:
-            try:
-                _this_dir = os.path.dirname(os.path.abspath(__file__))
-                if _this_dir not in sys.path:
-                    sys.path.insert(0, _this_dir)
-                from send_data import kirim_ke_google_sheet
-                kirim_ke_google_sheet(excel_path=abs_raw_excel_path)
-            except Exception as e:
-                print(f"⚠️ Gagal memanggil fungsi kirim GSheet harian: {e}")
-        else:
-            print(f"ℹ️ Export ke GSheet dilewati karena flag --no-sheet aktif.")
+        # --- Kirim ke GSheet Harian (Dihapus dari sini karena sudah ditangani via cli.py / send_data secara terpisah) ---
             
     except Exception as e:
         print(f"⚠️ Peringatan: Gagal membuat file Excel Raw: {e}")
@@ -1757,7 +1749,7 @@ def tulis_baseline_excel(all_results, start_date, end_date, outlet_filter=None):
             
             if m_label in monthly_totals:
                 monthly_totals[m_label]['revenue'] += val.get('revenue', 0.0)
-                monthly_totals[m_label]['orders'] += val.get('orders', 0) + val.get('order_batal', 0)
+                monthly_totals[m_label]['orders'] += val.get('orders', 0)
 
         # Hitung rata-rata bulanan
         total_omzet_kotor = sum(monthly_totals[lbl]['revenue'] for _, lbl in months_iter)
@@ -1999,46 +1991,71 @@ if __name__ == "__main__":
                 if store_id == "None" or store_id == "NaN":
                     store_id = ""
 
-        # Check token validity (TEMPORARILY DISABLED TO FORCE LOGIN FLOW)
+        # ── Cek session cache JSON terlebih dahulu ──
+        session_id = acc.get('email') or phone
+        cached_token = _load_session_token(session_id)
+        if cached_token and not token:
+            token = cached_token
+            acc['token'] = token
+
+        # ── Validasi token yang sudah ada ──
         token_valid = False
-        # if token:
-        #     os.environ['BEARER_TOKEN'] = token
-        #     token_valid = ambil_data_dashboard()
+        if token:
+            os.environ['BEARER_TOKEN'] = token
+            console.print(f"[dim]🔑 Memvalidasi sesi cache untuk {nama_outlet} ({session_id})...[/dim]")
+            token_valid = ambil_data_dashboard()
+
+        env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 
         if not token_valid:
-            console.print(f"[warning]⚠️ Sesi tidak valid/kosong untuk {nama_outlet} ({phone}). Melakukan login otomatis...[/warning]")
-            
-            env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
-            
+            console.print(f"[warning]⚠️ Sesi tidak valid/kosong untuk {nama_outlet} ({session_id}). Melakukan login otomatis...[/warning]")
+
             # Panggil fungsi login otomatis
             new_token = login_outlet_gofood_flow(acc)
             if new_token:
                 token = new_token
                 token_valid = True
-                
+
                 # Simpan token baru ke .env
                 sanitized_resto_name = re.sub(r'[^a-zA-Z0-9]', '', cabang or nama_outlet)
                 suffix = f"_{phone}_{sanitized_resto_name}"
-                os.environ['BEARER_TOKEN'] = token  # backward compat — proses ini sudah selesai auth
-                # Simpan ke .env dengan file lock agar tidak corrupt saat concurrent
+                os.environ['BEARER_TOKEN'] = token  # backward compat
                 env_lock = _FileLock(f"{env_path}.lock", timeout=15)
                 with env_lock:
                     set_key(env_path, f"BEARER_TOKEN{suffix}", token)
                     set_key(env_path, f"NAMA_OUTLET{suffix}", str(nama_outlet))
                     set_key(env_path, f"CABANG{suffix}", str(cabang))
                     set_key(env_path, f"STORE_ID{suffix}", str(store_id))
-                
-                console.print(f"[success]✅ Token berhasil ditangkap dan disimpan ke .env untuk {nama_outlet}.[/success]")
-                
+
+                # Simpan juga ke session JSON cache
+                _save_session_token(session_id, token, meta={
+                    'nama_outlet': nama_outlet,
+                    'cabang': cabang,
+                    'store_id': store_id,
+                })
+
+                console.print(f"[success]✅ Token berhasil ditangkap dan disimpan ke .env + session cache untuk {nama_outlet}.[/success]")
+
                 # Update token untuk akun dengan email/phone yang sama agar tidak login ulang
                 for other_acc in resolved_accounts:
-                    if other_acc['phone'] == phone or (acc.get('email') and other_acc.get('email') == acc.get('email')):
+                    if other_acc.get('email') == session_id or other_acc['phone'] == phone:
                         other_acc['token'] = token
-                
+                        _save_session_token(
+                            other_acc.get('email') or other_acc['phone'],
+                            token,
+                            meta={
+                                'nama_outlet': other_acc['nama_outlet'],
+                                'cabang': other_acc.get('cabang', ''),
+                                'store_id': other_acc.get('store_id', ''),
+                            }
+                        )
+
                 os.environ['BEARER_TOKEN'] = token
             else:
                 console.print(f"[error]❌ Gagal login untuk {nama_outlet}. Melewati outlet ini.[/error]")
                 continue
+        else:
+            console.print(f"[success]✅ Sesi valid untuk {nama_outlet}. Melewati login.[/success]")
 
         # Set environment untuk iterasi ini
         # Set token ke env hanya untuk backward compat (proses lain tidak terpengaruh
@@ -2050,8 +2067,8 @@ if __name__ == "__main__":
         
         targets_to_process = []
         
-        if not explicit_store_id and token:
-            console.print(f"[dim]Mencari Store ID dari API GoBiz...[/dim]")
+        if token:
+            console.print(f"[dim]Mencari profil cabang dari API GoBiz untuk nama spesifik...[/dim]")
             try:
                 url_search = "https://api.gobiz.co.id/v1/merchants/search"
                 headers_search = {
@@ -2073,11 +2090,20 @@ if __name__ == "__main__":
                         console.print(f"[success]✅ Ditemukan {len(hits)} cabang/merchant ID dalam portal ini.[/success]")
                         for h in hits:
                             t_id = h.get("id", "")
+                            
+                            if explicit_store_id and t_id != explicit_store_id:
+                                continue
+                                
                             t_nama = h.get("merchant_name", nama_outlet)
                             t_cabang = h.get("outlet_name", cabang)
+                            
+                            # Gunakan nama cabang sebagai nama outlet jika tersedia,
+                            # agar laporan Excel menampilkan nama presisi (contoh: Nasi Goreng Cinara, Ampel)
+                            resolved_nama = t_cabang if (t_cabang and t_cabang.lower() != 'tanpa cabang') else t_nama
+                            
                             targets_to_process.append({
                                 "store_id": t_id,
-                                "nama_outlet": t_nama,
+                                "nama_outlet": resolved_nama,
                                 "cabang": t_cabang
                             })
                             
@@ -2136,7 +2162,7 @@ if __name__ == "__main__":
 
 
     # --- TULIS BASELINE EXCEL GABUNGAN ---
-    if all_baseline_results and args_cli.task == "1":
+    if all_baseline_results:
         if not (custom_start_date and custom_end_date):
             now = datetime.now()
             first_day_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -2150,7 +2176,8 @@ if __name__ == "__main__":
         else:
             _start = custom_start_date
             _end = custom_end_date
-        tulis_baseline_excel(all_baseline_results, _start, _end, args_cli.outlet)
+        # File Baseline dihilangkan sesuai permintaan
+        # tulis_baseline_excel(all_baseline_results, _start, _end, args_cli.outlet)
 
     console.print("\n[bold]" + "="*50 + "[/bold]")
     console.print("[success]✅ Semua proses selesai![/success]")
