@@ -1930,25 +1930,28 @@ if __name__ == "__main__":
         branch_msg = f" dan cabang: {args_cli.branch}" if args_cli.branch else ""
         console.print(f"[success]✅ Filter outlet: {args_cli.outlet}{branch_msg} ({len(resolved_accounts)} akun)[/success]")
     else:
-        console.print("[bold]Daftar Outlet GoFood yang tersedia:[/bold]")
-        for i, acc in enumerate(resolved_accounts, 1):
-            status_token = "[green]✓ Token[/green]" if acc['token'] else "[red]✗ Belum Login[/red]"
-            cabang_info = f" - {acc['cabang']}" if acc['cabang'] and acc['cabang'] != 'Tanpa Cabang' else ""
-            store_info = f" (Store: {acc['store_id']})" if acc['store_id'] else ""
-            console.print(f"  [{i}] {acc['nama_outlet']}{cabang_info}{store_info} | {status_token}")
+        if args_cli.start_date and args_cli.end_date:
+            console.print(f"[info]📋 Mode non-interaktif: Memproses semua ({len(resolved_accounts)}) outlet GoFood.[/info]")
+        else:
+            console.print("[bold]Daftar Outlet GoFood yang tersedia:[/bold]")
+            for i, acc in enumerate(resolved_accounts, 1):
+                status_token = "[green]✓ Token[/green]" if acc['token'] else "[red]✗ Belum Login[/red]"
+                cabang_info = f" - {acc['cabang']}" if acc['cabang'] and acc['cabang'] != 'Tanpa Cabang' else ""
+                store_info = f" (Store: {acc['store_id']})" if acc['store_id'] else ""
+                console.print(f"  [{i}] {acc['nama_outlet']}{cabang_info}{store_info} | {status_token}")
 
-        console.print()
-        pilihan_cabang = input("Pilih nomor outlet (contoh: 1 atau 1,3 atau [Enter] untuk semua): ").strip().lower()
-        if pilihan_cabang not in ['all', 'semua', '']:
-            selected_indices = []
-            for p in pilihan_cabang.split(','):
-                if p.strip().isdigit():
-                    idx = int(p.strip()) - 1
-                    if 0 <= idx < len(resolved_accounts):
-                        selected_indices.append(idx)
-            if selected_indices:
-                resolved_accounts = [resolved_accounts[idx] for idx in selected_indices]
-                console.print(f"[success]✅ Memproses {len(resolved_accounts)} outlet pilihan.[/success]")
+            console.print()
+            pilihan_cabang = input("Pilih nomor outlet (contoh: 1 atau 1,3 atau [Enter] untuk semua): ").strip().lower()
+            if pilihan_cabang not in ['all', 'semua', '']:
+                selected_indices = []
+                for p in pilihan_cabang.split(','):
+                    if p.strip().isdigit():
+                        idx = int(p.strip()) - 1
+                        if 0 <= idx < len(resolved_accounts):
+                            selected_indices.append(idx)
+                if selected_indices:
+                    resolved_accounts = [resolved_accounts[idx] for idx in selected_indices]
+                    console.print(f"[success]✅ Memproses {len(resolved_accounts)} outlet pilihan.[/success]")
 
 
 
