@@ -1919,11 +1919,11 @@ if __name__ == "__main__":
 
     # --- Tampilkan daftar & beri pilihan ---
     if args_cli.outlet:
-        target_outlet = args_cli.outlet.strip().lower()
-        resolved_accounts = [a for a in resolved_accounts if target_outlet in a['nama_outlet'].lower()]
+        target_outlets = [x.strip().lower() for x in args_cli.outlet.split('|') if x.strip()]
+        resolved_accounts = [a for a in resolved_accounts if any(t in a['nama_outlet'].lower() for t in target_outlets)]
         if args_cli.branch:
-            target_branch = args_cli.branch.strip().lower()
-            resolved_accounts = [a for a in resolved_accounts if target_branch in a['cabang'].lower()]
+            target_branches = [x.strip().lower() for x in args_cli.branch.split('|') if x.strip()]
+            resolved_accounts = [a for a in resolved_accounts if any(t in a['cabang'].lower() for t in target_branches)]
         if not resolved_accounts:
             branch_err = f" dan cabang: {args_cli.branch}" if args_cli.branch else ""
             console.print(f"[error]⚠️ Tidak ditemukan akun GoFood dengan outlet: {args_cli.outlet}{branch_err}[/error]")
