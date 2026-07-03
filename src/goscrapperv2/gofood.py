@@ -1917,7 +1917,6 @@ if __name__ == "__main__":
         console.print("[error]❌ Tidak ada akun GoFood yang ditemukan. Silakan login via LoginManual.py terlebih dahulu.[/error]")
         exit(1)
 
-    # --- Tampilkan daftar & beri pilihan ---
     if args_cli.outlet:
         target_outlets = [x.strip().lower() for x in args_cli.outlet.split('|') if x.strip()]
         resolved_accounts = [a for a in resolved_accounts if any(t in a['nama_outlet'].lower() for t in target_outlets)]
@@ -1939,7 +1938,7 @@ if __name__ == "__main__":
             console.print(f"  [{i}] {acc['nama_outlet']}{cabang_info}{store_info} | {status_token}")
 
         console.print()
-        pilihan_cabang = input("Pilih nomor outlet (contoh: 1 atau 1,3 atau 'all'): ").strip().lower()
+        pilihan_cabang = input("Pilih nomor outlet (contoh: 1 atau 1,3 atau [Enter] untuk semua): ").strip().lower()
         if pilihan_cabang not in ['all', 'semua', '']:
             selected_indices = []
             for p in pilihan_cabang.split(','):
