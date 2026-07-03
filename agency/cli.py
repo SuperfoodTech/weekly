@@ -246,6 +246,8 @@ def run_gofood(start_date: str, end_date: str, outlet_filter: str = None, branch
     ]
     if outlet_filter:
         cmd.extend(["--outlet", outlet_filter])
+    else:
+        cmd.extend(["--outlet", "all"])
     if branch_filter:
         cmd.extend(["--branch", branch_filter])
     if no_sheet:

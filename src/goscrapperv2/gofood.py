@@ -1919,17 +1919,20 @@ if __name__ == "__main__":
 
     # --- Tampilkan daftar & beri pilihan ---
     if args_cli.outlet:
-        target_outlets = [x.strip().lower() for x in args_cli.outlet.split('|') if x.strip()]
-        resolved_accounts = [a for a in resolved_accounts if any(t in a['nama_outlet'].lower() for t in target_outlets)]
-        if args_cli.branch:
-            target_branches = [x.strip().lower() for x in args_cli.branch.split('|') if x.strip()]
-            resolved_accounts = [a for a in resolved_accounts if any(t in a['cabang'].lower() for t in target_branches)]
-        if not resolved_accounts:
-            branch_err = f" dan cabang: {args_cli.branch}" if args_cli.branch else ""
-            console.print(f"[error]⚠️ Tidak ditemukan akun GoFood dengan outlet: {args_cli.outlet}{branch_err}[/error]")
-            exit(1)
-        branch_msg = f" dan cabang: {args_cli.branch}" if args_cli.branch else ""
-        console.print(f"[success]✅ Filter outlet: {args_cli.outlet}{branch_msg} ({len(resolved_accounts)} akun)[/success]")
+        if args_cli.outlet.strip().lower() == 'all':
+            console.print(f"[success]✅ Filter outlet: ALL ({len(resolved_accounts)} akun)[/success]")
+        else:
+            target_outlets = [x.strip().lower() for x in args_cli.outlet.split('|') if x.strip()]
+            resolved_accounts = [a for a in resolved_accounts if any(t in a['nama_outlet'].lower() for t in target_outlets)]
+            if args_cli.branch:
+                target_branches = [x.strip().lower() for x in args_cli.branch.split('|') if x.strip()]
+                resolved_accounts = [a for a in resolved_accounts if any(t in a['cabang'].lower() for t in target_branches)]
+            if not resolved_accounts:
+                branch_err = f" dan cabang: {args_cli.branch}" if args_cli.branch else ""
+                console.print(f"[error]⚠️ Tidak ditemukan akun GoFood dengan outlet: {args_cli.outlet}{branch_err}[/error]")
+                exit(1)
+            branch_msg = f" dan cabang: {args_cli.branch}" if args_cli.branch else ""
+            console.print(f"[success]✅ Filter outlet: {args_cli.outlet}{branch_msg} ({len(resolved_accounts)} akun)[/success]")
     else:
         console.print("[bold]Daftar Outlet GoFood yang tersedia:[/bold]")
         for i, acc in enumerate(resolved_accounts, 1):
