@@ -347,10 +347,10 @@ def interactive_mode():
             print(f"    {CYAN}[b]{RESET} Kembali ke cakupan outlet")
             print()
             
-            o_choices = input(f"  {BOLD}Pilih nomor outlet Grab (contoh: 1,3 atau 'all' or 'b'):{RESET} ").strip()
+            o_choices = input(f"  {BOLD}Pilih nomor outlet Grab (contoh: 1,3 atau [Enter] untuk semua, 'b' untuk kembali):{RESET} ").strip()
             if o_choices.lower() == "b":
                 state = "scope"
-            elif o_choices.lower() == "all":
+            elif o_choices.lower() in ("all", ""):
                 outlet = outlets_list
                 if platform == "all":
                     state = "shopee_merchant"
@@ -392,10 +392,10 @@ def interactive_mode():
             print(f"    {CYAN}[b]{RESET} Kembali ke pemilihan outlet Grab")
             print()
             
-            b_choices = input(f"  {BOLD}Pilih nomor cabang Grab (contoh: 1,2 atau 'all' atau 'b'):{RESET} ").strip()
+            b_choices = input(f"  {BOLD}Pilih nomor cabang Grab (contoh: 1,2 atau [Enter] untuk semua, 'b' untuk kembali):{RESET} ").strip()
             if b_choices.lower() == "b":
                 state = "grab_outlet"
-            elif b_choices.lower() == "all":
+            elif b_choices.lower() in ("all", ""):
                 branch = branches
                 if platform == "all":
                     state = "shopee_merchant"
@@ -438,7 +438,7 @@ def interactive_mode():
             print(f"    {CYAN}[b]{RESET} Kembali ke menu sebelumnya")
             print()
             
-            m_choices = input(f"  {BOLD}Pilih nomor merchant Shopee (contoh: 1,2 atau 'all' atau 'b'):{RESET} ").strip()
+            m_choices = input(f"  {BOLD}Pilih nomor merchant Shopee (contoh: 1,2 atau [Enter] untuk semua, 'b' untuk kembali):{RESET} ").strip()
             if m_choices.lower() == "b":
                 if platform == "all":
                     if len(outlet) == 1:
@@ -447,7 +447,7 @@ def interactive_mode():
                         state = "grab_outlet"
                 else:
                     state = "scope"
-            elif m_choices.lower() == "all":
+            elif m_choices.lower() in ("all", ""):
                 shopee_merchant = merchants
                 if platform == "all":
                     state = "gofood_outlet"
@@ -484,13 +484,13 @@ def interactive_mode():
             print(f"    {CYAN}[b]{RESET} Kembali ke menu sebelumnya")
             print()
             
-            o_choices = input(f"  {BOLD}Pilih nomor outlet GoFood (contoh: 1,3 atau 'all' atau 'b'):{RESET} ").strip()
+            o_choices = input(f"  {BOLD}Pilih nomor outlet GoFood (contoh: 1,3 atau [Enter] untuk semua, 'b' untuk kembali):{RESET} ").strip()
             if o_choices.lower() == "b":
                 if platform == "all":
                     state = "shopee_merchant"
                 else:
                     state = "scope"
-            elif o_choices.lower() == "all":
+            elif o_choices.lower() in ("all", ""):
                 gofood_outlet = gofood_outlets
                 state = "date"
             else:

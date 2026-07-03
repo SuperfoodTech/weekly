@@ -1948,7 +1948,7 @@ if __name__ == "__main__":
             console.print(f"  [{i}] {acc['nama_outlet']}{cabang_info}{store_info} | {status_token}")
 
         console.print()
-        pilihan_cabang = input("Pilih nomor outlet (contoh: 1 atau 1,3 atau 'all'): ").strip().lower()
+        pilihan_cabang = input("Pilih nomor outlet (contoh: 1 atau 1,3 atau [Enter] untuk semua): ").strip().lower()
         if pilihan_cabang not in ['all', 'semua', '']:
             selected_indices = []
             for p in pilihan_cabang.split(','):

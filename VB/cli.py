@@ -267,10 +267,10 @@ def interactive_mode():
             print(f"    {CYAN}[b]{RESET} Kembali ke cakupan outlet")
             print()
             
-            o_choices = input(f"  {BOLD}Pilih nomor portal Grab (contoh: 1,3 atau 'all' atau 'b'):{RESET} ").strip()
+            o_choices = input(f"  {BOLD}Pilih nomor portal Grab (contoh: 1,3 atau [Enter] untuk semua, 'b' untuk kembali):{RESET} ").strip()
             if o_choices.lower() == "b":
                 state = "scope"
-            elif o_choices.lower() == "all":
+            elif o_choices.lower() in ("all", ""):
                 outlet = outlets_list
                 if platform == "all":
                     state = "shopee_merchant"
@@ -306,13 +306,13 @@ def interactive_mode():
             print(f"    {CYAN}[b]{RESET} Kembali ke menu sebelumnya")
             print()
             
-            m_choices = input(f"  {BOLD}Pilih nomor portal Shopee (contoh: 1,2 atau 'all' atau 'b'):{RESET} ").strip()
+            m_choices = input(f"  {BOLD}Pilih nomor portal Shopee (contoh: 1,2 atau [Enter] untuk semua, 'b' untuk kembali):{RESET} ").strip()
             if m_choices.lower() == "b":
                 if platform == "all":
                     state = "grab_outlet"
                 else:
                     state = "scope"
-            elif m_choices.lower() == "all":
+            elif m_choices.lower() in ("all", ""):
                 shopee_merchant = merchants
                 state = "date"
             else:

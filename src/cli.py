@@ -672,8 +672,8 @@ def interactive_mode():
         print()
         while True:
             try:
-                o_choices = input(f"  {BOLD}Pilih nomor outlet (contoh: 1,3 atau 'all'):{RESET} ").strip()
-                if o_choices.lower() == "all":
+                o_choices = input(f"  {BOLD}Pilih nomor outlet (contoh: 1,3 atau [Enter] untuk semua):{RESET} ").strip()
+                if o_choices.lower() in ("all", ""):
                     unified_outlet = outlets
                     break
                 else:
@@ -830,8 +830,8 @@ def interactive_mode():
                     print()
                     while True:
                         try:
-                            o_choices = input(f"  {BOLD}Pilih nomor outlet Grab (contoh: 1,3 atau 'all'):{RESET} ").strip()
-                            if o_choices.lower() == "all":
+                            o_choices = input(f"  {BOLD}Pilih nomor outlet Grab (contoh: 1,3 atau [Enter] untuk semua):{RESET} ").strip()
+                            if o_choices.lower() in ("all", ""):
                                 outlet = outlets_list
                                 break
                             else:
@@ -855,8 +855,8 @@ def interactive_mode():
                             print()
                             while True:
                                 try:
-                                    b_choices = input(f"  {BOLD}Pilih nomor cabang Grab (contoh: 1,2 atau 'all'):{RESET} ").strip()
-                                    if b_choices.lower() == "all":
+                                    b_choices = input(f"  {BOLD}Pilih nomor cabang Grab (contoh: 1,2 atau [Enter] untuk semua):{RESET} ").strip()
+                                    if b_choices.lower() in ("all", ""):
                                         branch = branches
                                         break
                                     else:
@@ -888,8 +888,8 @@ def interactive_mode():
                     print()
                     while True:
                         try:
-                            m_choices = input(f"  {BOLD}Pilih nomor merchant Shopee (contoh: 1,2 atau 'all'):{RESET} ").strip()
-                            if m_choices.lower() == "all":
+                            m_choices = input(f"  {BOLD}Pilih nomor merchant Shopee (contoh: 1,2 atau [Enter] untuk semua):{RESET} ").strip()
+                            if m_choices.lower() in ("all", ""):
                                 shopee_merchant = merchants
                                 break
                             else:
@@ -914,8 +914,8 @@ def interactive_mode():
                     print()
                     while True:
                         try:
-                            o_choices = input(f"  {BOLD}Pilih nomor outlet GoFood (contoh: 1,3 atau 'all'):{RESET} ").strip()
-                            if o_choices.lower() == "all":
+                            o_choices = input(f"  {BOLD}Pilih nomor outlet GoFood (contoh: 1,3 atau [Enter] untuk semua):{RESET} ").strip()
+                            if o_choices.lower() in ("all", ""):
                                 if not outlet: # If user selected all in platform prompt, we append
                                     outlet = gofood_outlets
                                 else:
