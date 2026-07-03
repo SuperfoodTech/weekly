@@ -218,13 +218,23 @@ def run_shopee(start_date: str, end_date: str, merchant_filter: str = None, skip
     result = subprocess.run(cmd, cwd=shopee_dir)
     return result.returncode == 0
 
-def run_gofood(start_date: str, end_date: str, outlet_filter: str = None, branch_filter: str = None):
+def run_gofood(start_date: str, end_date: str, outlet_filter: str = None, branch_filter: str = None, task_choice: str = "2", no_sheet: bool = False, clear_cache: bool = False):
+    """
+    Delegates to the GoFood Login/Dashboard utility.
+    Working directory is set to goscrapperv2 so that
+    relative paths and imports resolve correctly.
+    task_choice: "1" = Baseline, "2" = Weekly (default)
+    """
     gofood_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "goscrapperv2")
     if not os.path.isdir(gofood_dir):
         print(f"{RED}[ERROR]{RESET} GoFood directory not found: {gofood_dir}")
         return False
 
-    output_dir = _resolve_output_dir("gofood", start_date, end_date)
+    if task_choice == "1":
+        output_dir = _resolve_output_dir("gofood_baseline", start_date, end_date)
+    else:
+        output_dir = _resolve_output_dir("gofood", start_date, end_date)
+
     import subprocess
     python_exe = _resolve_python_executable()
     cmd = [
@@ -232,16 +242,86 @@ def run_gofood(start_date: str, end_date: str, outlet_filter: str = None, branch
         "--start-date", start_date,
         "--end-date", end_date,
         "--output-dir", output_dir,
-        "--task", "2"
+        "--task", task_choice
     ]
     if outlet_filter:
         cmd.extend(["--outlet", outlet_filter])
     if branch_filter:
         cmd.extend(["--branch", branch_filter])
+    if no_sheet:
+        cmd.append("--no-sheet")
+    if clear_cache:
+        cmd.append("--clear-cache")
 
-    print(f"\n{YELLOW}{BOLD}▶ GOFOOD WEEKLY PIPELINE{RESET}")
+    label = "BASELINE" if task_choice == "1" else "WEEKLY"
+    print(f"\n{YELLOW}{BOLD}▶ GOFOOD {label} PIPELINE{RESET}")
+    print(f"  {DIM}Directory : {gofood_dir}{RESET}")
+    if outlet_filter:
+        print(f"  {DIM}Outlet    : {outlet_filter}{RESET}")
+    if branch_filter:
+        print(f"  {DIM}Cabang    : {branch_filter}{RESET}")
+    print(f"  {DIM}Output Dir: {output_dir}{RESET}")
+    print(f"  {DIM}Date Range: {start_date} → {end_date}{RESET}")
+    print()
+
     result = subprocess.run(cmd, cwd=gofood_dir)
-    return result.returncode == 0
+    if result.returncode == 0:
+        print(f"\n{GREEN}✓ GoFood {label} scrape data berhasil.{RESET}")
+        return True
+    else:
+        print(f"\n{RED}✗ GoFood {label} scrape data keluar dengan kode {result.returncode}.{RESET}")
+        return False
+
+
+def run_gofood_send_data(start_date: str, end_date: str, task_choice: str = "2", sheet_name: str = "Gofood") -> bool:
+    """
+    Mengirim data hasil scraping GoFood dari folder raw ke Google Sheet.
+    Memanggil fungsi kirim_ke_google_sheet() dari goscrapperv2/send_data.py.
+    """
+    import sys as _sys
+    gofood_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "goscrapperv2")
+    send_data_path = os.path.join(gofood_dir, "send_data.py")
+
+    if not os.path.isfile(send_data_path):
+        print(f"{RED}[ERROR]{RESET} send_data.py tidak ditemukan: {send_data_path}")
+        return False
+
+    if task_choice == "1":
+        raw_folder = _resolve_output_dir("gofood_baseline", start_date, end_date)
+    else:
+        raw_folder = _resolve_output_dir("gofood", start_date, end_date)
+    if not os.path.isdir(raw_folder):
+        print(f"  {YELLOW}⚠ Folder raw GoFood tidak ditemukan: {raw_folder}{RESET}")
+        print(f"  {DIM}Pastikan scraping GoFood sudah selesai terlebih dahulu.{RESET}")
+        return False
+
+    print(f"\n{YELLOW}{BOLD}▶ KIRIM DATA GOFOOD → GOOGLE SHEET{RESET}")
+    print(f"  {DIM}Folder  : {raw_folder}{RESET}")
+    print(f"  {DIM}Sheet   : {sheet_name}{RESET}")
+    print(f"  {DIM}Range   : {start_date} → {end_date}{RESET}")
+    print()
+
+    if gofood_dir not in _sys.path:
+        _sys.path.insert(0, gofood_dir)
+
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("send_data", send_data_path)
+        send_data_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(send_data_mod)
+        
+        # Override RAW_BASE_DIR di modul send_data agar membaca dari output_dir yang tepat
+        send_data_mod.RAW_BASE_DIR = os.path.dirname(raw_folder)
+        
+        send_data_mod.kirim_ke_google_sheet(
+            start_date=start_date,
+            end_date=end_date,
+            sheet_name=sheet_name
+        )
+        return True
+    except Exception as e:
+        print(f"{RED}[ERROR]{RESET} Gagal mengirim data ke GSheet: {e}")
+        return False
 
 def interactive_mode():
     state = "platform"
@@ -671,7 +751,22 @@ def main():
             if platform in ("gofood", "all"):
                 go_str = "|".join(gofood_outlet) if gofood_outlet else None
                 b_str = "|".join(branch) if branch else None
-                results["GoFood"] = run_gofood(start_date, end_date, outlet_filter=go_str, branch_filter=b_str)
+                results["GoFood"] = run_gofood(start_date, end_date, outlet_filter=go_str, branch_filter=b_str, task_choice="2")
+
+                # ── Auto-kirim ke GSheet setelah scraping GoFood selesai ──
+                if results.get("GoFood"):
+                    print(f"\n  {CYAN}{'─'*50}{RESET}")
+                    while True:
+                        send_choice = input(
+                            f"  {BOLD}Kirim data GoFood ({start_date} s/d {end_date}) ke Google Sheet? (Y/n):{RESET} "
+                        ).strip().lower()
+                        if send_choice in ("y", "yes", ""):
+                            run_gofood_send_data(start_date, end_date, task_choice="2")
+                            break
+                        elif send_choice in ("n", "no"):
+                            print(f"  {YELLOW}[INFO] Pengiriman ke GSheet dilewati.{RESET}")
+                            break
+                        print(f"  {RED}Input tidak valid. Masukkan y atau n.{RESET}")
 
             elapsed = datetime.now() - start_time
             print(f"\n{CYAN}{BOLD}  SUMMARY{RESET}")

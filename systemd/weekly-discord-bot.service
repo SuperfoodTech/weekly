@@ -4,8 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-User=akbarhann
-WorkingDirectory=/home/akbarhann/project/weekly/discord-bot-weekly
+# User akan diisi otomatis oleh install_service.sh
+User=<USER>
+# WorkingDirectory akan diisi otomatis oleh install_service.sh
+WorkingDirectory=<PROJECT_DIR>
 ExecStart=/usr/bin/env node index.js
 Restart=always
 RestartSec=5
@@ -14,7 +16,7 @@ StandardError=journal
 SyslogIdentifier=weekly-discord-bot
 
 # Loads environment variables from the .env file
-EnvironmentFile=/home/akbarhann/project/weekly/discord-bot-weekly/.env
+EnvironmentFile=<PROJECT_DIR>/.env
 
 [Install]
 WantedBy=multi-user.target
