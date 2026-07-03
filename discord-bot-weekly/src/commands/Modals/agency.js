@@ -569,11 +569,11 @@ module.exports = {
         if (isWeeklyJobRunning) {
             return interaction.reply({
                 content: '⚠️ **Sistem Sibuk!** Laporan Weekly Agency lain sedang berjalan. Harap tunggu hingga proses sebelumnya selesai.',
-                flags: 64
+                ephemeral: false
             });
         }
 
-        await interaction.deferReply({ flags: 64 });
+        await interaction.deferReply({ ephemeral: false });
 
         // Pre-fetch weekly sheet data
         try {
@@ -899,7 +899,7 @@ module.exports = {
                     if (grabOutlets.length === 0) {
                         return lastInteraction.reply({
                             content: '❌ Gagal memuat daftar outlet Grab live.',
-                            flags: 64
+                            ephemeral: false
                         });
                     }
                     const grabOptions = grabOutlets.map(name => ({
@@ -941,7 +941,7 @@ module.exports = {
                     if (shopeeOutlets.length === 0) {
                         return lastInteraction.reply({
                             content: '❌ Gagal memuat daftar outlet Shopee live.',
-                            flags: 64
+                            ephemeral: false
                         });
                     }
                     const shopeeOptions = shopeeOutlets.map(name => ({
@@ -984,7 +984,7 @@ module.exports = {
                     if (gofoodOutlets.length === 0) {
                         return lastInteraction.reply({
                             content: '❌ Gagal memuat daftar outlet GoFood live.',
-                            flags: 64
+                            ephemeral: false
                         });
                     }
                     const gofoodOptions = gofoodOutlets.map(name => ({
@@ -1029,7 +1029,7 @@ module.exports = {
                     if (weeklyOutlets.length === 0) {
                         return lastInteraction.reply({
                             content: '❌ Gagal memuat daftar outlet live untuk platform terpilih.',
-                            flags: 64
+                            ephemeral: false
                         });
                     }
                     const outletOptions = weeklyOutlets.map(name => ({
@@ -1888,7 +1888,7 @@ module.exports = {
             if (err.message !== 'Timeout or cancelled' && err.message !== 'Timeout atau dibatalkan') {
                 await interaction.followUp({
                     content: `❌ **Terjadi kesalahan:** ${err.message}`,
-                    flags: 64
+                    ephemeral: false
                 }).catch(() => { });
             }
         }
