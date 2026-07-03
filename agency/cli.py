@@ -704,8 +704,9 @@ def main():
             load_dotenv()
 
             skip_existing = False
-            gofood_outlet = []
+            is_interactive = False
             if args.platform is None or args.start is None or args.end is None:
+                is_interactive = True
                 platform, start_date, end_date, outlet, branch, shopee_merchant, gofood_outlet, skip_existing = interactive_mode()
             else:
                 platform = args.platform.lower()
@@ -756,17 +757,21 @@ def main():
                 # ── Auto-kirim ke GSheet setelah scraping GoFood selesai ──
                 if results.get("GoFood"):
                     print(f"\n  {CYAN}{'─'*50}{RESET}")
-                    while True:
-                        send_choice = input(
-                            f"  {BOLD}Kirim data GoFood ({start_date} s/d {end_date}) ke Google Sheet? (Y/n):{RESET} "
-                        ).strip().lower()
-                        if send_choice in ("y", "yes", ""):
-                            run_gofood_send_data(start_date, end_date, task_choice="2")
-                            break
-                        elif send_choice in ("n", "no"):
-                            print(f"  {YELLOW}[INFO] Pengiriman ke GSheet dilewati.{RESET}")
-                            break
-                        print(f"  {RED}Input tidak valid. Masukkan y atau n.{RESET}")
+                    if not is_interactive:
+                        print(f"  {BOLD}[INFO] Mode non-interaktif: Mengirim data GoFood ke Google Sheet secara otomatis.{RESET}")
+                        run_gofood_send_data(start_date, end_date, task_choice="2")
+                    else:
+                        while True:
+                            send_choice = input(
+                                f"  {BOLD}Kirim data GoFood ({start_date} s/d {end_date}) ke Google Sheet? (Y/n):{RESET} "
+                            ).strip().lower()
+                            if send_choice in ("y", "yes", ""):
+                                run_gofood_send_data(start_date, end_date, task_choice="2")
+                                break
+                            elif send_choice in ("n", "no"):
+                                print(f"  {YELLOW}[INFO] Pengiriman ke GSheet dilewati.{RESET}")
+                                break
+                            print(f"  {RED}Input tidak valid. Masukkan y atau n.{RESET}")
 
             elapsed = datetime.now() - start_time
             print(f"\n{CYAN}{BOLD}  SUMMARY{RESET}")
