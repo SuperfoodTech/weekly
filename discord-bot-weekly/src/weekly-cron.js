@@ -303,61 +303,8 @@ async function runTargetPipeline(target, startDate, endDate) {
 
             if (result.success) {
                 currentStep = 5;
-                const uploadedFiles = [];
-                let uploadedFolderUrl = null;
-                const searchPaths = target === 'agency' ? ['grab', 'shopee', 'gofood'] : ['grab', 'shopee'];
-
-                for (const plat of searchPaths) {
-                    const platDirName = target === 'vb' ? `${plat}_vb` : plat;
-                    const dir = path.join(WEEKLY_DIR, 'laporan', platDirName, `${startDate}_to_${endDate}`);
-                    if (fs.existsSync(dir)) {
-                        const dirFiles = fs.readdirSync(dir);
-                        for (const file of dirFiles) {
-                            if (file.endsWith('.xlsx')) {
-                                const filePath = path.join(dir, file);
-                                const stats = fs.statSync(filePath);
-
-                                // Upload generated/modified files from this run
-                                if (stats.mtimeMs >= startTime) {
-                                    try {
-                                        const fileContent = fs.readFileSync(filePath);
-                                        const base64Content = fileContent.toString('base64');
-
-                                        console.log(`[CRON-DRIVE] Uploading ${file} to Google Drive...`);
-                                        const driveRes = await uploadToDrive(APPS_SCRIPT_DRIVE_URL, {
-                                            folderId: "1AF7zvgT0fuMTzTrXV_FKwUWj1R7JeOcx",
-                                            platform: target === 'vb' ? `${plat.toUpperCase()}_VB` : plat.toUpperCase(),
-                                            dateRange: `${startDate}_to_${endDate}`,
-                                            filename: file,
-                                            content: base64Content
-                                        });
-
-                                        if (driveRes && driveRes.status === 'success') {
-                                            uploadedFiles.push({
-                                                name: file,
-                                                url: driveRes.url
-                                            });
-                                            if (driveRes.folderUrl) {
-                                                uploadedFolderUrl = driveRes.folderUrl;
-                                            }
-                                        }
-                                    } catch (uploadErr) {
-                                        console.error(`[CRON-DRIVE] Error uploading ${file}:`, uploadErr);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                let driveStatus = '';
-                if (uploadedFiles.length > 0) {
-                    const folderLink = uploadedFolderUrl || "https://drive.google.com/";
-                    driveStatus = `📂 **Google Drive Folder:** [Buka Folder Rentang Tanggal](${folderLink})\n` +
-                                  `*Berhasil mengunggah ${uploadedFiles.length} file (Master + Rincian).*`;
-                } else {
-                    driveStatus = '❌ *Gagal mengunggah file laporan ke Google Drive.*';
-                }
+                const targetUrl = target.toLowerCase() === 'agency' ? 'http://168.144.143.203/agency/' : 'http://168.144.143.203/vb';
+                const driveStatus = `📂 **Laporan Folder:** [Buka Folder Laporan](${targetUrl})`;
 
                 const successEmbed = {
                     embeds: [
