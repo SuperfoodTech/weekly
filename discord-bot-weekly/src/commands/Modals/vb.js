@@ -1550,67 +1550,7 @@ module.exports = {
 
                 if (result.success) {
                     const attachments = [];
-                    const uploadedFiles = [];
-                    let uploadedFolderUrl = null;
-                    const searchPaths = platform === 'all' ? ['grab', 'shopee'] : [platform];
-
-                    for (const plat of searchPaths) {
-                        const dir = path.join(WEEKLY_DIR, 'laporan', `${plat}_vb`, `${startDate}_to_${endDate}`);
-                        if (fs.existsSync(dir)) {
-                            const dirFiles = fs.readdirSync(dir);
-                            for (const file of dirFiles) {
-                                if (file.endsWith('.xlsx')) {
-                                    const filePath = path.join(dir, file);
-                                    const stats = fs.statSync(filePath);
-
-                                    // Hanya upload file yang dibuat/dimodifikasi selama pipeline ini berjalan
-                                    if (stats.mtimeMs >= startTime) {
-                                        if (APPS_SCRIPT_DRIVE_URL && APPS_SCRIPT_DRIVE_URL !== "ISI_DENGAN_URL_WEB_APP_APPS_SCRIPT_ANDA") {
-                                            try {
-                                                const fileContent = fs.readFileSync(filePath);
-                                                const base64Content = fileContent.toString('base64');
-
-                                                console.log(`[DRIVE UPLOAD] Uploading ${file}...`);
-                                                const driveRes = await uploadToDrive(APPS_SCRIPT_DRIVE_URL, {
-                                                    folderId: "1AF7zvgT0fuMTzTrXV_FKwUWj1R7JeOcx",
-                                                    platform: `${plat.toUpperCase()}_VB`, // e.g. GRAB_VB or SHOPEE_VB
-                                                    dateRange: `${startDate}_to_${endDate}`,
-                                                    filename: file,
-                                                    content: base64Content
-                                                });
-
-                                                if (driveRes && driveRes.status === 'success') {
-                                                    uploadedFiles.push({
-                                                        name: file,
-                                                        url: driveRes.url
-                                                    });
-                                                    if (driveRes.folderUrl) {
-                                                        uploadedFolderUrl = driveRes.folderUrl;
-                                                    }
-                                                    console.log(`[DRIVE UPLOAD] Successful! Url: ${driveRes.url}`);
-                                                } else {
-                                                    console.error(`[DRIVE UPLOAD] Failed for ${file}:`, driveRes ? driveRes.message : 'No response');
-                                                }
-                                            } catch (uploadErr) {
-                                                console.error(`[DRIVE UPLOAD] Error for ${file}:`, uploadErr);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    let driveStatus = '';
-                    if (APPS_SCRIPT_DRIVE_URL === "ISI_DENGAN_URL_WEB_APP_APPS_SCRIPT_ANDA") {
-                        driveStatus = '⚠️ *Upload Google Drive belum dikonfigurasi.*';
-                    } else if (uploadedFiles.length > 0) {
-                        const folderLink = uploadedFolderUrl || "https://drive.google.com/";
-                        driveStatus = `📂 **Google Drive Folder:** [Buka Folder Rentang Tanggal](${folderLink})\n` +
-                            `*Berhasil mengunggah ${uploadedFiles.length} file (Master + Rincian).*`;
-                    } else {
-                        driveStatus = '❌ *Gagal mengunggah file laporan ke Google Drive.*';
-                    }
+                    const driveStatus = `📂 **Laporan Folder:** [Buka Folder Laporan](http://168.144.143.203/vb)`;
 
                     const successEmbed = new EmbedBuilder()
                         .setColor(0x00C853)
