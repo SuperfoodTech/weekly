@@ -13,15 +13,16 @@ const fs = require('fs');
 
 // Locate target weekly directory (either 'agency' or 'VB')
 function getWeeklyTargetDir(target) {
-    let dir = path.resolve(__dirname, '..', '..', target);
+    const normalizedTarget = target && target.toLowerCase() === 'vb' ? 'VB' : target;
+    let dir = path.resolve(__dirname, '..', '..', normalizedTarget);
     if (fs.existsSync(dir)) {
         return dir;
     }
-    dir = path.resolve(__dirname, '..', '..', 'weekly', target);
+    dir = path.resolve(__dirname, '..', '..', 'weekly', normalizedTarget);
     if (fs.existsSync(dir)) {
         return dir;
     }
-    return path.resolve(__dirname, '..', '..', target);
+    return path.resolve(__dirname, '..', '..', normalizedTarget);
 }
 
 // Locate src directory

@@ -17,11 +17,12 @@ const { runWeeklyPipeline } = require('../../../bridge/run_weekly_pipeline');
 
 // Path to weekly directory resolver
 function getWeeklyTargetDir(target) {
-    const dir = path.resolve(__dirname, '../../../../', target);
+    const normalizedTarget = target && target.toLowerCase() === 'vb' ? 'VB' : target;
+    const dir = path.resolve(__dirname, '../../../../', normalizedTarget);
     if (fs.existsSync(dir)) {
         return dir;
     }
-    const nestedDir = path.resolve(__dirname, '../../../../weekly', target);
+    const nestedDir = path.resolve(__dirname, '../../../../weekly', normalizedTarget);
     if (fs.existsSync(nestedDir)) {
         return nestedDir;
     }
