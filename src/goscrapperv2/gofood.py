@@ -2181,6 +2181,51 @@ if __name__ == "__main__":
         # File Baseline dihilangkan sesuai permintaan
         # tulis_baseline_excel(all_baseline_results, _start, _end, args_cli.outlet)
 
+    # --- MERGING TO 0Master.xlsx ---
+    import glob
+    import pandas as pd
+    
+    date_folder = f"{custom_start_date.strftime('%Y-%m-%d')}_to_{custom_end_date.strftime('%Y-%m-%d')}" if (custom_start_date and custom_end_date) else f"{_start.strftime('%Y-%m-%d')}_to_{_end.strftime('%Y-%m-%d')}" if 'all_baseline_results' in locals() and all_baseline_results else "unknown_date"
+    if GLOBAL_OUTPUT_DIR:
+        report_dir = GLOBAL_OUTPUT_DIR
+    else:
+        report_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'laporan', 'gofood', date_folder)
+
+    if os.path.exists(report_dir):
+        console.print("📊 [PROGRESS] PHASE: Merging all downloaded GoFood files to 0Master.xlsx...")
+        xlsx_files = glob.glob(os.path.join(report_dir, "*.xlsx"))
+        all_data = []
+        for fpath in xlsx_files:
+            filename = os.path.basename(fpath)
+            if filename.startswith("MASTER") or filename.startswith("0Master"):
+                continue
+            try:
+                df = pd.read_excel(fpath, dtype=str)
+                if not df.empty:
+                    all_data.append(df)
+            except Exception as e:
+                console.print(f"  [error]❌ Error reading '{filename}': {e}[/error]")
+                
+        if all_data:
+            master_df = pd.concat(all_data, ignore_index=True)
+            
+            # Format numbers safely
+            for col in ['Penjualan Kotor', 'Biaya Komisi', 'Pengeluaran Iklan & Diskon', 'Order Sukses', 'Order Batal']:
+                if col in master_df.columns:
+                    master_df[col] = pd.to_numeric(master_df[col], errors='coerce').fillna(0).astype(int)
+
+            master_filepath = os.path.join(report_dir, "0Master.xlsx")
+            version = 1
+            while os.path.exists(master_filepath):
+                version += 1
+                master_filepath = os.path.join(report_dir, f"0Master-{version:02d}.xlsx")
+                
+            master_df.to_excel(master_filepath, index=False)
+            console.print(f"🎉 [SUCCESS] Laporan 0Master created: {master_filepath}")
+            console.print(f"   Total baris: {len(master_df)}")
+        else:
+            console.print("⚠️ Tidak ada data untuk digabungkan ke 0Master.")
+
     console.print("\n[bold]" + "="*50 + "[/bold]")
     console.print("[success]✅ Semua proses selesai![/success]")
     console.print("[bold]" + "="*50 + "[/bold]")
