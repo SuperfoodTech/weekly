@@ -372,7 +372,7 @@ async function runWeeklyCronJob() {
 
     // 2. Run VB Pipeline
     try {
-        await runTargetPipeline('vb', startDate, endDate);
+        await runTargetPipeline('VB', startDate, endDate);
     } catch (err) {
         console.error('[CRON] VB weekly execution error:', err);
     }
