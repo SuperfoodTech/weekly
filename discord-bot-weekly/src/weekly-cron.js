@@ -358,51 +358,54 @@ async function runTargetPipeline(target, startDate, endDate) {
     });
 }
 
-// Runs both pipelines sequentially
-async function runWeeklyCronJob() {
+async function runAgencyWeeklyJob() {
     const { startDate, endDate } = getPreviousWeekRange();
-    console.log(`[CRON] Starting weekly automated job for range: ${startDate} to ${endDate}`);
-
-    // 1. Run Agency Pipeline
+    console.log(`[CRON-AGENCY] Starting weekly automated job for range: ${startDate} to ${endDate}`);
     try {
         await runTargetPipeline('agency', startDate, endDate);
     } catch (err) {
-        console.error('[CRON] Agency weekly execution error:', err);
+        console.error('[CRON-AGENCY] Agency weekly execution error:', err);
     }
-
-    // 2. Run VB Pipeline
-    try {
-        // Calculate recentMonday (lastSunday + 1 day / startDate + 7 days)
-        const parts = startDate.split('-');
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const day = parseInt(parts[2], 10);
-
-        const lastMondayDate = new Date(year, month, day);
-        const recentMondayDate = new Date(lastMondayDate);
-        recentMondayDate.setDate(lastMondayDate.getDate() + 7);
-
-        const formatDate = (date) => {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const d = String(date.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        };
-
-        const vbStartDate = startDate;
-        const vbEndDate = formatDate(recentMondayDate);
-
-        console.log(`[CRON] Starting weekly VB pipeline for range: ${vbStartDate} to ${vbEndDate}`);
-        await runTargetPipeline('VB', vbStartDate, vbEndDate);
-    } catch (err) {
-        console.error('[CRON] VB weekly execution error:', err);
-    }
-
-    console.log('[CRON] Weekly automated job completed.');
 }
 
-// Main Cron Scheduling Loop
-function scheduleNextWeeklyRun() {
+async function runVBWeeklyJob() {
+    const { startDate } = getPreviousWeekRange();
+
+    const parts = startDate.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+
+    const lastMondayDate = new Date(year, month, day);
+    const recentMondayDate = new Date(lastMondayDate);
+    recentMondayDate.setDate(lastMondayDate.getDate() + 7);
+
+    const formatDate = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
+    const vbStartDate = startDate;
+    const vbEndDate = formatDate(recentMondayDate);
+
+    console.log(`[CRON-VB] Starting weekly VB pipeline for range: ${vbStartDate} to ${vbEndDate}`);
+    try {
+        await runTargetPipeline('VB', vbStartDate, vbEndDate);
+    } catch (err) {
+        console.error('[CRON-VB] VB weekly execution error:', err);
+    }
+}
+
+// Runs both pipelines sequentially (for manual/direct invocation)
+async function runWeeklyCronJob() {
+    await runAgencyWeeklyJob();
+    await runVBWeeklyJob();
+}
+
+// Generic Cron Scheduling Loop
+function scheduleNextJob(targetName, hour, jobExecutor) {
     const now = new Date();
     const nowMs = now.getTime();
 
@@ -414,10 +417,10 @@ function scheduleNextWeeklyRun() {
     let daysToAdd = (1 - currentWibDay + 7) % 7;
 
     const nextRunWib = new Date(wibDate);
-    nextRunWib.setUTCHours(5, 0, 0, 0); // Target is 05:00:00 WIB
+    nextRunWib.setUTCHours(hour, 0, 0, 0); // Target is hour:00:00 WIB
 
-    // If today is Monday and time is >= 05:00 WIB, schedule for next week
-    if (daysToAdd === 0 && wibDate.getUTCHours() >= 5) {
+    // If today is Monday and time is >= target hour WIB, schedule for next week
+    if (daysToAdd === 0 && wibDate.getUTCHours() >= hour) {
         daysToAdd = 7;
     }
 
@@ -428,22 +431,28 @@ function scheduleNextWeeklyRun() {
     const nextRun = new Date(nextRunMs);
 
     const delay = nextRun.getTime() - now.getTime();
-    console.log(`[CRON] Current WIB time: ${wibDate.toUTCString().replace('GMT', 'WIB')}`);
-    console.log(`[CRON] Next weekly run scheduled for (WIB): ${nextRunWib.toUTCString().replace('GMT', 'WIB')}`);
-    console.log(`[CRON] Delay to next run: ${delay} ms (${Math.floor(delay / 60000)} minutes)`);
+    console.log(`[CRON-${targetName}] Current WIB time: ${wibDate.toUTCString().replace('GMT', 'WIB')}`);
+    console.log(`[CRON-${targetName}] Next weekly run scheduled for (WIB): ${nextRunWib.toUTCString().replace('GMT', 'WIB')}`);
+    console.log(`[CRON-${targetName}] Delay to next run: ${delay} ms (${Math.floor(delay / 60000)} minutes)`);
 
     if (delay > 0) {
         setTimeout(() => {
-            console.log('[CRON] Executing scheduled weekly job...');
-            runWeeklyCronJob()
-                .catch(err => console.error('[CRON] Error during execution:', err))
+            console.log(`[CRON-${targetName}] Executing scheduled weekly job...`);
+            jobExecutor()
+                .catch(err => console.error(`[CRON-${targetName}] Error during execution:`, err))
                 .finally(() => {
-                    scheduleNextWeeklyRun();
+                    scheduleNextJob(targetName, hour, jobExecutor);
                 });
         }, delay);
     } else {
-        setTimeout(scheduleNextWeeklyRun, 60000);
+        setTimeout(() => scheduleNextJob(targetName, hour, jobExecutor), 60000);
     }
+}
+
+// Main Cron Scheduling Entry Point
+function scheduleNextWeeklyRun() {
+    scheduleNextJob('AGENCY', 5, runAgencyWeeklyJob);
+    scheduleNextJob('VB', 9, runVBWeeklyJob);
 }
 
 module.exports = {
