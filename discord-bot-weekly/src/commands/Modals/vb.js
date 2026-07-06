@@ -618,6 +618,8 @@ module.exports = {
                     lastSunday.setDate(today.getDate() - daysToLastSunday);
                     const lastMonday = new Date(lastSunday);
                     lastMonday.setDate(lastSunday.getDate() - 6);
+                    const recentMonday = new Date(lastSunday);
+                    recentMonday.setDate(lastSunday.getDate() + 1);
 
                     const formatDateDisplay = (d) => {
                         const day = String(d.getDate()).padStart(2, '0');
@@ -627,10 +629,10 @@ module.exports = {
                     };
 
                     const defaultStartDisp = formatDateDisplay(lastMonday);
-                    const defaultEndDisp = formatDateDisplay(lastSunday);
+                    const defaultEndDisp = formatDateDisplay(recentMonday);
 
                     const defaultStartISO = toISOFormat(lastMonday);
-                    const defaultEndISO = toISOFormat(lastSunday);
+                    const defaultEndISO = toISOFormat(recentMonday);
 
                     const currentFields = [
                         { name: 'Tipe', value: 'VB', inline: true },
@@ -647,7 +649,7 @@ module.exports = {
                     let errorMsg = null;
 
                     const getPeriodEmbed = () => {
-                        let desc = 'Silakan pilih **📅 7 Hari Penuh (Senin-Minggu)**, atau klik **⚙️ Custom Date Range** untuk menentukan rentang tanggal secara manual.';
+                        let desc = 'Silakan pilih **📅 Periode Senin-Senin**, atau klik **⚙️ Custom Date Range** untuk menentukan rentang tanggal secara manual.';
                         if (errorMsg) {
                             desc = `❌ **Error:** ${errorMsg}\n\n` + desc;
                         }
@@ -659,7 +661,7 @@ module.exports = {
                             new ActionRowBuilder().addComponents(
                                 new ButtonBuilder()
                                     .setCustomId('vb_shortcut_7_days_btn')
-                                    .setLabel(`📅 7 Hari Penuh (${defaultStartDisp} s/d ${defaultEndDisp})`)
+                                    .setLabel(`📅 Periode Senin-Senin (${defaultStartDisp} s/d ${defaultEndDisp})`)
                                     .setStyle(ButtonStyle.Success),
                                 new ButtonBuilder()
                                     .setCustomId('vb_open_date_modal_btn')
