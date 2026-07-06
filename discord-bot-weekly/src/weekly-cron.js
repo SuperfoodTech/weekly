@@ -372,7 +372,28 @@ async function runWeeklyCronJob() {
 
     // 2. Run VB Pipeline
     try {
-        await runTargetPipeline('VB', startDate, endDate);
+        // Calculate recentMonday (lastSunday + 1 day / startDate + 7 days)
+        const parts = startDate.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        
+        const lastMondayDate = new Date(year, month, day);
+        const recentMondayDate = new Date(lastMondayDate);
+        recentMondayDate.setDate(lastMondayDate.getDate() + 7);
+        
+        const formatDate = (date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+        
+        const vbStartDate = startDate;
+        const vbEndDate = formatDate(recentMondayDate);
+        
+        console.log(`[CRON] Starting weekly VB pipeline for range: ${vbStartDate} to ${vbEndDate}`);
+        await runTargetPipeline('VB', vbStartDate, vbEndDate);
     } catch (err) {
         console.error('[CRON] VB weekly execution error:', err);
     }
