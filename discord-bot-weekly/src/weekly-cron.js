@@ -108,23 +108,23 @@ function getPreviousWeekRange() {
     // Convert to WIB (GMT+7) safely regardless of system timezone
     const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
     const wibTime = new Date(utcTime + 7 * 3600000);
-    
+
     const dayOfWeek = wibTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const diffToLastMonday = (dayOfWeek === 0 ? 6 : dayOfWeek - 1) + 7;
-    
+
     const lastMonday = new Date(wibTime);
     lastMonday.setDate(wibTime.getDate() - diffToLastMonday);
-    
+
     const lastSunday = new Date(lastMonday);
     lastSunday.setDate(lastMonday.getDate() + 6);
-    
+
     const formatDate = (date) => {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     };
-    
+
     return {
         startDate: formatDate(lastMonday),
         endDate: formatDate(lastSunday)
@@ -145,7 +145,7 @@ async function runTargetPipeline(target, startDate, endDate) {
     const buildEmbed = (progressStep, extraLog) => {
         let progressLabel = '';
         let color = 0x5865F2; // Default blue/purple
-        
+
         if (progressStep === 5) {
             progressLabel = '✅ Completed';
             color = 0x00C853; // Green
@@ -170,7 +170,7 @@ async function runTargetPipeline(target, startDate, endDate) {
                 {
                     color: progressStep === 5 ? 0x00C853 : (progressStep === -1 ? 0xFF0000 : embedColor),
                     title: titleText,
-                    description: 
+                    description:
                         `Weekly pipeline sedang dijalankan otomatis via Cron Job.\n\n` +
                         `> 🏢 **Tipe:** ${target.toUpperCase()}\n` +
                         `> 📍 **Platform:** ALL\n` +
@@ -325,7 +325,7 @@ async function runTargetPipeline(target, startDate, endDate) {
                 };
 
                 if (messageId) {
-                    await sendWebhook(`${WEBHOOK_URL}/messages/${messageId}`, successEmbed, 'PATCH').catch(() => {});
+                    await sendWebhook(`${WEBHOOK_URL}/messages/${messageId}`, successEmbed, 'PATCH').catch(() => { });
                 }
             } else {
                 currentStep = -1;
@@ -350,7 +350,7 @@ async function runTargetPipeline(target, startDate, endDate) {
                 };
 
                 if (messageId) {
-                    await sendWebhook(`${WEBHOOK_URL}/messages/${messageId}`, failedEmbed, 'PATCH').catch(() => {});
+                    await sendWebhook(`${WEBHOOK_URL}/messages/${messageId}`, failedEmbed, 'PATCH').catch(() => { });
                 }
             }
             resolve();
@@ -358,71 +358,101 @@ async function runTargetPipeline(target, startDate, endDate) {
     });
 }
 
-// Runs both pipelines sequentially
-async function runWeeklyCronJob() {
+async function runAgencyWeeklyJob() {
     const { startDate, endDate } = getPreviousWeekRange();
-    console.log(`[CRON] Starting weekly automated job for range: ${startDate} to ${endDate}`);
-    
-    // 1. Run Agency Pipeline
+    console.log(`[CRON-AGENCY] Starting weekly automated job for range: ${startDate} to ${endDate}`);
     try {
         await runTargetPipeline('agency', startDate, endDate);
     } catch (err) {
-        console.error('[CRON] Agency weekly execution error:', err);
+        console.error('[CRON-AGENCY] Agency weekly execution error:', err);
     }
-
-    // 2. Run VB Pipeline
-    try {
-        await runTargetPipeline('VB', startDate, endDate);
-    } catch (err) {
-        console.error('[CRON] VB weekly execution error:', err);
-    }
-    
-    console.log('[CRON] Weekly automated job completed.');
 }
 
-// Main Cron Scheduling Loop
-function scheduleNextWeeklyRun() {
+async function runVBWeeklyJob() {
+    const { startDate } = getPreviousWeekRange();
+
+    const parts = startDate.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+
+    const lastMondayDate = new Date(year, month, day);
+    const recentMondayDate = new Date(lastMondayDate);
+    recentMondayDate.setDate(lastMondayDate.getDate() + 7);
+
+    const formatDate = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
+    const vbStartDate = startDate;
+    const vbEndDate = formatDate(recentMondayDate);
+
+    console.log(`[CRON-VB] Starting weekly VB pipeline for range: ${vbStartDate} to ${vbEndDate}`);
+    try {
+        await runTargetPipeline('VB', vbStartDate, vbEndDate);
+    } catch (err) {
+        console.error('[CRON-VB] VB weekly execution error:', err);
+    }
+}
+
+// Runs both pipelines sequentially (for manual/direct invocation)
+async function runWeeklyCronJob() {
+    await runAgencyWeeklyJob();
+    await runVBWeeklyJob();
+}
+
+// Generic Cron Scheduling Loop
+function scheduleNextJob(targetName, hour, jobExecutor) {
     const now = new Date();
     const nowMs = now.getTime();
-    
+
     // Calculate current WIB (GMT+7) date/time
     const wibMs = nowMs + (7 * 60 * 60 * 1000);
     const wibDate = new Date(wibMs);
     const currentWibDay = wibDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    
+
     let daysToAdd = (1 - currentWibDay + 7) % 7;
-    
+
     const nextRunWib = new Date(wibDate);
-    nextRunWib.setUTCHours(5, 0, 0, 0); // Target is 05:00:00 WIB
-    
-    // If today is Monday and time is >= 05:00 WIB, schedule for next week
-    if (daysToAdd === 0 && wibDate.getUTCHours() >= 5) {
+    nextRunWib.setUTCHours(hour, 0, 0, 0); // Target is hour:00:00 WIB
+
+    // If today is Monday and time is >= target hour WIB, schedule for next week
+    if (daysToAdd === 0 && wibDate.getUTCHours() >= hour) {
         daysToAdd = 7;
     }
-    
+
     nextRunWib.setUTCDate(wibDate.getUTCDate() + daysToAdd);
-    
+
     // Convert target WIB back to UTC milliseconds
     const nextRunMs = nextRunWib.getTime() - (7 * 60 * 60 * 1000);
     const nextRun = new Date(nextRunMs);
-    
+
     const delay = nextRun.getTime() - now.getTime();
-    console.log(`[CRON] Current WIB time: ${wibDate.toUTCString().replace('GMT', 'WIB')}`);
-    console.log(`[CRON] Next weekly run scheduled for (WIB): ${nextRunWib.toUTCString().replace('GMT', 'WIB')}`);
-    console.log(`[CRON] Delay to next run: ${delay} ms (${Math.floor(delay / 60000)} minutes)`);
-    
+    console.log(`[CRON-${targetName}] Current WIB time: ${wibDate.toUTCString().replace('GMT', 'WIB')}`);
+    console.log(`[CRON-${targetName}] Next weekly run scheduled for (WIB): ${nextRunWib.toUTCString().replace('GMT', 'WIB')}`);
+    console.log(`[CRON-${targetName}] Delay to next run: ${delay} ms (${Math.floor(delay / 60000)} minutes)`);
+
     if (delay > 0) {
         setTimeout(() => {
-            console.log('[CRON] Executing scheduled weekly job...');
-            runWeeklyCronJob()
-                .catch(err => console.error('[CRON] Error during execution:', err))
+            console.log(`[CRON-${targetName}] Executing scheduled weekly job...`);
+            jobExecutor()
+                .catch(err => console.error(`[CRON-${targetName}] Error during execution:`, err))
                 .finally(() => {
-                    scheduleNextWeeklyRun();
+                    scheduleNextJob(targetName, hour, jobExecutor);
                 });
         }, delay);
     } else {
-        setTimeout(scheduleNextWeeklyRun, 60000);
+        setTimeout(() => scheduleNextJob(targetName, hour, jobExecutor), 60000);
     }
+}
+
+// Main Cron Scheduling Entry Point
+function scheduleNextWeeklyRun() {
+    scheduleNextJob('AGENCY', 5, runAgencyWeeklyJob);
+    scheduleNextJob('VB', 9, runVBWeeklyJob);
 }
 
 module.exports = {

@@ -38,15 +38,14 @@ def get_previous_week_range():
     now_wib = now_utc + timedelta(hours=7)
     
     # Calculate days to last Sunday (weekday(): 0=Monday, 6=Sunday)
-    # If today is Monday (0), last Sunday was 1 day ago.
-    # If today is Tuesday (1), last Sunday was 2 days ago, etc.
     weekday = now_wib.weekday()
     days_to_last_sunday = weekday + 1
     
     last_sunday = now_wib - timedelta(days=days_to_last_sunday)
     last_monday = last_sunday - timedelta(days=6)
+    recent_monday = last_sunday + timedelta(days=1)
     
-    return last_monday.strftime("%Y-%m-%d"), last_sunday.strftime("%Y-%m-%d")
+    return last_monday.strftime("%Y-%m-%d"), recent_monday.strftime("%Y-%m-%d")
 
 def main():
     log.info("=" * 60)
