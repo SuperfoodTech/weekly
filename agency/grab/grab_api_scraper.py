@@ -228,6 +228,29 @@ class GrabAPI:
         else:
             logger.warning(f"  [API] merchant-selector returned status {status}: {str(resp.get('data'))[:100]}")
         return None
+    
+    async def get_real_store_id(self,mgid):
+        "GET /user-profile/v1/store-list?merchant_group_id={mgid}&currency={currency}"
+        url = f"{self.base_url}/user-profile/v1/store-list"
+        params = {
+            "merchant_group_id": mgid,
+            "currency": "IDR"
+        }
+        resp = await self.call_api(url, params=params)
+        status = resp.get("status")
+        if status == 200:
+            data = resp.get("data", {})
+            stores = data.get("stores")
+            if stores is None:
+                stores = data.get("data", {}).get("stores", [])
+            if stores:
+                gfid = stores[0].get("gfid")
+                return gfid
+            else:
+                logger.warning(f"  [API] store-list success but no stores found in data: {data}")
+        else:
+            logger.warning(f"  [API] store-list returned status {status}: {str(resp.get('data'))[:100]}")
+        return None
 
     async def start_async_download(self, mgid, start_date, end_date):
         """GET /mex/finances/v1/async-transactions-download
@@ -677,6 +700,7 @@ async def run_api_download_for_portal(user, pwd, start_date: str = None, end_dat
         context = None
         mgid = None
         page = None
+        real_store_id = None
         for auth_attempt in range(2):  # Allow at most 1 re-auth if session is stale
             try:
                 if browser is None and managed_browser is None:
@@ -768,6 +792,13 @@ async def run_api_download_for_portal(user, pwd, start_date: str = None, end_dat
                         await context.storage_state(path=session_path)
     
                 if mgid:
+                    # Fetch Real Store ID (GFID)
+                    try:
+                        logger.info(f"  [API] Fetching Real Store ID (GFID) for MGID {mgid}...")
+                        real_store_id = await api.get_real_store_id(mgid)
+                        logger.info(f"  [API] Found Real Store ID: {real_store_id}")
+                    except Exception as e:
+                        logger.error(f"  [API] Failed to get Real Store ID: {e}")
                     break  # Auth succeeded — exit auth retry loop
     
                 # Auth failed — close context and try once more without saved session
@@ -810,6 +841,15 @@ async def run_api_download_for_portal(user, pwd, start_date: str = None, end_dat
                 await p.stop()
             return None, "Auth failed"
 
+        # Fetch Real Store ID (GFID) if we have mgid but real_store_id is still None (e.g. from active session)
+        if mgid and not real_store_id:
+            try:
+                logger.info(f"  [API] Fetching Real Store ID (GFID) for MGID {mgid} (late fetch)...")
+                real_store_id = await api.get_real_store_id(mgid)
+                logger.info(f"  [API] Found Real Store ID: {real_store_id}")
+            except Exception as e:
+                logger.error(f"  [API] Failed to get Real Store ID during late fetch: {e}")
+
         # --- Native Grab CSV Export as PRIMARY METHOD ---
         logger.info(f"  [Action] Executing Native S3 Download as PRIMARY method for {user}...")
         s3_filename = None
@@ -845,6 +885,24 @@ async def run_api_download_for_portal(user, pwd, start_date: str = None, end_dat
 
                 # Success!
                 s3_filename = filename
+                
+                # Inject Real Store ID into CSV
+                if real_store_id and s3_filename:
+                    try:
+                        import pandas as pd
+                        df = pd.read_csv(s3_filename)
+                        if "real_store_id" in df.columns:
+                            df = df.drop(columns=["real_store_id"])
+                        if "Store ID" in df.columns:
+                            idx = df.columns.get_loc("Store ID")
+                            df.insert(idx + 1, "real_store_id", real_store_id)
+                        else:
+                            df["real_store_id"] = real_store_id
+                        df.to_csv(s3_filename, index=False)
+                        logger.info(f"  [CSV] Injected real_store_id '{real_store_id}' into {s3_filename}")
+                    except Exception as csv_err:
+                        logger.error(f"  [CSV] Failed to inject real_store_id into {s3_filename}: {csv_err}")
+                
                 break
 
             except SessionStuckError as se:
@@ -888,6 +946,24 @@ async def run_api_download_for_portal(user, pwd, start_date: str = None, end_dat
             
             if fast_filename:
                 logger.info(f"  [Action] Fast API Extraction Fallback Success! Returning generated CSV.")
+                
+                # Inject Real Store ID into CSV
+                if real_store_id and fast_filename:
+                    try:
+                        import pandas as pd
+                        df = pd.read_csv(fast_filename)
+                        if "real_store_id" in df.columns:
+                            df = df.drop(columns=["real_store_id"])
+                        if "Store ID" in df.columns:
+                            idx = df.columns.get_loc("Store ID")
+                            df.insert(idx + 1, "real_store_id", real_store_id)
+                        else:
+                            df["real_store_id"] = real_store_id
+                        df.to_csv(fast_filename, index=False)
+                        logger.info(f"  [CSV] Injected real_store_id '{real_store_id}' into {fast_filename}")
+                    except Exception as csv_err:
+                        logger.error(f"  [CSV] Failed to inject real_store_id into {fast_filename}: {csv_err}")
+                        
                 if context: await context.close()
                 if managed_browser: await managed_browser.close()
                 if p: await p.stop()

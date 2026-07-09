@@ -390,7 +390,7 @@ async def run_all(date_start: str = None, date_end: str = None, output_dir: str 
         
         # Headers target Grab (sesuai urutan di sheet)
         target_headers = [
-            "Flag", "Month", "Merchant Name", "Merchant ID", "Store Name", "Store ID", 
+            "Flag", "Month", "Merchant Name", "Merchant ID", "Store Name", "Store ID", "real_store_id",
             "Updated On", "Created On", "Type", "Category", "Subcategory", "Status", 
             "Transaction ID", "Linked Transaction ID", "Partner transaction ID 1", 
             "Partner transaction ID 2", "Long Order ID", "Short Order ID", "Booking ID", 
