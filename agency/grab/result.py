@@ -15,7 +15,11 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_INPUT = BASE_DIR / "downloads" / "grab_transactions_3months_(01-02-26_to_30-04-26).csv"
 DEFAULT_OUTPUT = BASE_DIR / "monthly_summary_wide.xlsx"
-LAPORAN_DIR = BASE_DIR / "laporan"
+import os
+if os.name == "nt":
+    LAPORAN_DIR = BASE_DIR / "laporan"
+else:
+    LAPORAN_DIR = Path("/mnt/volume_web_scraping/agency")
 
 
 def resolve_input_path(raw_path: str | None) -> Path:

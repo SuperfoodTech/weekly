@@ -73,7 +73,12 @@ function resolveShopeeMerchant(outletName) {
 
 function isOutletDownloaded(target, platform, startDate, endDate, outletName) {
     const WEEKLY_DIR = getWeeklyTargetDir(target);
-    const outputDir = path.join(WEEKLY_DIR, 'laporan', platform, `${startDate}_to_${endDate}`);
+    let outputDir;
+    if (fs.existsSync("/mnt/volume_web_scraping")) {
+        outputDir = path.join("/mnt/volume_web_scraping/agency", platform, `${startDate}_to_${endDate}`);
+    } else {
+        outputDir = path.join(WEEKLY_DIR, 'laporan', platform, `${startDate}_to_${endDate}`);
+    }
     if (!fs.existsSync(outputDir)) return false;
 
     let checkName = outletName;

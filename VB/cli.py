@@ -110,8 +110,11 @@ def _resolve_python_executable() -> str:
     return sys.executable
 
 def _resolve_output_dir(platform_name: str, start_date: str, end_date: str) -> str:
-    base = os.path.dirname(os.path.abspath(__file__))
-    out = os.path.join(base, "laporan", f"{platform_name}_vb", f"{start_date}_to_{end_date}")
+    if os.name == "nt":
+        base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "laporan")
+    else:
+        base = "/mnt/volume_web_scraping/vb"
+    out = os.path.join(base, f"{platform_name}_vb", f"{start_date}_to_{end_date}")
     os.makedirs(out, exist_ok=True)
     return out
 
