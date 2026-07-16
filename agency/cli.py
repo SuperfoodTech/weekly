@@ -120,7 +120,7 @@ def _resolve_output_dir(platform_name: str, start_date: str, end_date: str) -> s
     return out
 
 def _resolve_shopee_merchant(outlet_name: str, branch_name: str = None) -> str:
-    GSHEETS_URL = "https://docs.google.com/spreadsheets/d/14eCb8DAEXhmbYj9MFj2KzC7AhkulbCbSNPltN2m-go0/export?format=csv&gid=0"
+    GSHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3tLKBNXDqRgBw0mNhKZFxgvKx-JoiTDzm_s5Ix1cm7O6HCv4IvExOLR2HSRVaXSsx82V348mcr9X4/pub?gid=0&single=true&output=csv"
     base = os.path.dirname(os.path.abspath(__file__))
     cache_path = os.path.join(base, "shopee", "data", "master_merchants_cache.csv")
 
@@ -136,7 +136,19 @@ def _resolve_shopee_merchant(outlet_name: str, branch_name: str = None) -> str:
         if os.path.exists(cache_path):
             age_hours = (time.time() - os.path.getmtime(cache_path)) / 3600
             if age_hours < 0.01: # 36 seconds cache instead of 24 hours
-                df = pd.read_csv(cache_path)
+                try:
+                    df = pd.read_csv(cache_path)
+                    # Verify required columns exist
+                    required_cols = ['Aplikasi', 'Status', 'Nama Outlet', 'Merchant Name']
+                    missing_cols = [col for col in required_cols if col not in df.columns]
+                    if missing_cols:
+                        raise KeyError(f"Missing columns in cache: {missing_cols}")
+                except Exception:
+                    df = None
+                    try:
+                        os.unlink(cache_path)
+                    except Exception:
+                        pass
 
         if df is None:
             cache_buster = f"&t={int(time.time())}" if "?" in GSHEETS_URL else f"?t={int(time.time())}"
@@ -344,7 +356,7 @@ def interactive_mode():
         import requests
         import io
         print(f"\n  {CYAN}[INFO] Mengunduh daftar merchant terbaru dari Google Sheets...{RESET}")
-        CSV_URL_MAIN = "https://docs.google.com/spreadsheets/d/14eCb8DAEXhmbYj9MFj2KzC7AhkulbCbSNPltN2m-go0/export?format=csv&gid=0"
+        CSV_URL_MAIN = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3tLKBNXDqRgBw0mNhKZFxgvKx-JoiTDzm_s5Ix1cm7O6HCv4IvExOLR2HSRVaXSsx82V348mcr9X4/pub?gid=0&single=true&output=csv"
         try:
             import time
             cache_buster = f"&t={int(time.time())}" if "?" in CSV_URL_MAIN else f"?t={int(time.time())}"

@@ -183,7 +183,7 @@ def get_live_merchants(app_name="ShopeeFood", max_age_hours=24, merchant_filter=
     import os
     from datetime import datetime
     
-    url = "https://docs.google.com/spreadsheets/d/14eCb8DAEXhmbYj9MFj2KzC7AhkulbCbSNPltN2m-go0/export?format=csv&gid=880434015"
+    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3tLKBNXDqRgBw0mNhKZFxgvKx-JoiTDzm_s5Ix1cm7O6HCv4IvExOLR2HSRVaXSsx82V348mcr9X4/pub?gid=880434015&single=true&output=csv"
     cache_path = "data/master_merchants_cache.csv"
     os.makedirs("data", exist_ok=True)
     
@@ -191,11 +191,27 @@ def get_live_merchants(app_name="ShopeeFood", max_age_hours=24, merchant_filter=
     try:
         log.info("🌐 [DATA] Downloading fresh merchant list from Google Sheets...")
         df = robust_read_csv(url, expected_cols=9)
+        required = ['aplikasi', 'merchant name']
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            raise KeyError(f"Missing columns: {missing}")
         df.to_csv(cache_path, index=False)
     except Exception as download_err:
         log.warning(f"⚠️ [DATA] Failed to download fresh merchant list: {download_err}. Trying cache...")
         if os.path.exists(cache_path):
-            df = robust_read_csv(cache_path, expected_cols=9)
+            try:
+                df = robust_read_csv(cache_path, expected_cols=9)
+                required = ['aplikasi', 'merchant name']
+                missing = [c for c in required if c not in df.columns]
+                if missing:
+                    raise KeyError(f"Missing columns: {missing}")
+            except Exception as cache_err:
+                log.error(f"⚠️ Cache is corrupt/invalid: {cache_err}. Removing it...")
+                df = None
+                try:
+                    os.unlink(cache_path)
+                except Exception:
+                    pass
         else:
             log.error(f"❌ [DATA] No cache available and download failed.")
             return []
@@ -303,7 +319,7 @@ def get_shopee_baseline_credentials(merchant_name, max_age_hours=24):
     cache_creds = "data/shopee_credentials_cache.csv"
     os.makedirs("data", exist_ok=True)
     
-    url_merchants = "https://docs.google.com/spreadsheets/d/14eCb8DAEXhmbYj9MFj2KzC7AhkulbCbSNPltN2m-go0/export?format=csv&gid=880434015"
+    url_merchants = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3tLKBNXDqRgBw0mNhKZFxgvKx-JoiTDzm_s5Ix1cm7O6HCv4IvExOLR2HSRVaXSsx82V348mcr9X4/pub?gid=880434015&single=true&output=csv"
     url_creds = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRYSUnKOqk29LCktTxdb0wPLbWMbRaWRP3eC_UA4AwYod1FW6zDMhtLMC5ghIvot2B8upCDfBsn-TCP/pub?gid=565510790&single=true&output=csv"
     
     def check_and_download(url, cache_path):

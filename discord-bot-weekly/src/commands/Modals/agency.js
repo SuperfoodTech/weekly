@@ -297,7 +297,7 @@ async function getWeeklyOutlets(platform) {
     if (cachedWeeklySheetData && (now - lastWeeklyCacheTime < WEEKLY_CACHE_DURATION)) {
         csvData = cachedWeeklySheetData;
     } else {
-        const url = 'https://docs.google.com/spreadsheets/d/14eCb8DAEXhmbYj9MFj2KzC7AhkulbCbSNPltN2m-go0/export?format=csv&gid=0';
+        const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ3tLKBNXDqRgBw0mNhKZFxgvKx-JoiTDzm_s5Ix1cm7O6HCv4IvExOLR2HSRVaXSsx82V348mcr9X4/pub?gid=0&single=true&output=csv';
         csvData = await fetchCSV(url);
         cachedWeeklySheetData = csvData;
         lastWeeklyCacheTime = now;
