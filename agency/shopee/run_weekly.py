@@ -4,6 +4,7 @@ import json
 import threading
 import pandas as pd
 import sys
+import glob
 # Add parent directory (weekly/) to sys.path so core/ imports work
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -51,21 +52,32 @@ def get_live_merchants(app_name="ShopeeFood", max_age_hours=0.01, merchant_filte
         mtime = os.path.getmtime(cache_path)
         age_hours = (time.time() - mtime) / 3600
         if age_hours < max_age_hours:
-            log.info(f"🔄 [DATA] Using cached merchant list (Age: {age_hours:.1f}h)")
-            df = pd.read_csv(cache_path)
-            sf_df = df[(df['Aplikasi'] == app_name) & (df['Status'] == 'Live')]
-            
-            if merchant_filter:
-                if "|" in merchant_filter:
-                    filter_vals = [m.strip().lower().rstrip('_') for m in merchant_filter.split("|")]
-                    sf_df = sf_df[sf_df['Merchant Name'].str.strip().str.lower().str.rstrip('_').isin(filter_vals)]
-                else:
-                    filter_val = merchant_filter.strip().lower().rstrip('_')
-                    sf_df = sf_df[sf_df['Merchant Name'].str.strip().str.lower().str.rstrip('_') == filter_val]
+            try:
+                log.info(f"🔄 [DATA] Using cached merchant list (Age: {age_hours:.1f}h)")
+                df = pd.read_csv(cache_path)
+                required_cols = ['Aplikasi', 'Status', 'Merchant Name']
+                missing_cols = [c for c in required_cols if c not in df.columns]
+                if missing_cols:
+                    raise KeyError(f"Missing columns in cache: {missing_cols}")
+                sf_df = df[(df['Aplikasi'] == app_name) & (df['Status'] == 'Live')]
                 
-            sf_df = sf_df[(sf_df['Merchant Name'] != '-') & (sf_df['Merchant Name'].notna())]
-            sf_df = sf_df.drop_duplicates(subset=['Merchant Name'])
-            return sf_df['Merchant Name'].tolist()
+                if merchant_filter:
+                    if "|" in merchant_filter:
+                        filter_vals = [m.strip().lower().rstrip('_') for m in merchant_filter.split("|")]
+                        sf_df = sf_df[sf_df['Merchant Name'].str.strip().str.lower().str.rstrip('_').isin(filter_vals)]
+                    else:
+                        filter_val = merchant_filter.strip().lower().rstrip('_')
+                        sf_df = sf_df[sf_df['Merchant Name'].str.strip().str.lower().str.rstrip('_') == filter_val]
+                    
+                sf_df = sf_df[(sf_df['Merchant Name'] != '-') & (sf_df['Merchant Name'].notna())]
+                sf_df = sf_df.drop_duplicates(subset=['Merchant Name'])
+                return sf_df['Merchant Name'].tolist()
+            except Exception as e:
+                log.warning(f"⚠️ Cache file is corrupt or invalid: {e}. Removing cache and downloading fresh data...")
+                try:
+                    os.unlink(cache_path)
+                except Exception:
+                    pass
             
     # Jika tidak ada cache atau sudah usang, download ulang
     log.info("🌐 [DATA] Downloading fresh merchant list from Google Sheets...")
@@ -219,7 +231,6 @@ def run_pipeline():
     report_dir = args.output_dir or "data/reports/weekly"
 
     # Pre-run cleanup of old Excel files in custom or download runs to ensure clean master aggregation
-    import glob
     if not args.skip_download and os.path.exists(report_dir):
         if args.merchant:
             merchants_to_clean = [m.strip().replace(' ', '_') for m in args.merchant.split('|')]
@@ -342,7 +353,6 @@ def run_pipeline():
         active_merchants = []
         for m in target_merchants:
             safe_merchant = m.replace(" ", "_")
-            import glob
             pattern = os.path.join(report_dir, f"{safe_merchant}_*.xlsx")
             matching_files = glob.glob(pattern)
             matching_files = [f for f in matching_files if not os.path.basename(f).startswith("Master_") and not os.path.basename(f).startswith("0Master")]
@@ -591,7 +601,6 @@ def run_pipeline():
     all_analyzed_data = []
     
     # Get all xlsx files in report_dir
-    import glob
     xlsx_files = glob.glob(os.path.join(report_dir, "*.xlsx"))
     
     # Sort files to ensure deterministic merging order
