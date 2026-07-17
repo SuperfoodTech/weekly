@@ -93,8 +93,9 @@ def validate_credentials(username, password):
         return False, f"Credential contains a placeholder value (user: '{u}', pwd: '{p}')"
         
     # Check if username and password are identical
-    if u.lower() == p.lower():
-        return False, f"Username and Password are identical (likely copy-paste error): '{u}'"
+    # Commented out because Grab VB credentials actually use identical username/password with different casing (e.g. grabautof2s / Grabautof2s)
+    # if u.lower() == p.lower():
+    #     return False, f"Username and Password are identical (likely copy-paste error): '{u}'"
         
     # Check if password is too short
     if len(p) < 6:
@@ -215,6 +216,29 @@ class GrabAPI:
         else:
             logger.warning(f"  [API] merchant-selector returned status {status}: {str(resp.get('data'))[:100]}")
         return None
+    
+    async def real_store_id(self,mgid):
+        "GET /user-profile/v1/store-list?merchant_group_id={mgid}&currency=IDR"
+        url = f"{self.base_url}/user-profile/v1/store-list"
+        params = {
+            "merchant_group_id":mgid,
+            "currency":"IDR",
+        }
+        resp = await self.call_api(url, params=params)
+        if resp.get("status") == 200:
+            data = resp.get("data", {})
+            stores = resp.get("stores", {})
+            if stores is None:
+                stores = data.get("data", {}).get("stores",[])
+            if stores:
+                gfid = stores[0].get("gfid")
+                return gfid
+            else:
+                logger.warning(f"  [API] No stores found for merchant group id: {mgid}")
+                return None
+        else:
+            logger.warning(f"  [API] store-list returned status {resp.get('status')}: {str(resp.get('data'))[:100]}")
+            return None
 
     async def start_async_download(self, mgid, start_date, end_date):
         """GET /mex/finances/v1/async-transactions-download

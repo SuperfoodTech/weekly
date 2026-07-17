@@ -106,8 +106,9 @@ def validate_credentials(username, password):
         return False, f"Credential contains a placeholder value (user: '{u}', pwd: '{p}')"
         
     # Check if username and password are identical
-    if u.lower() == p.lower():
-        return False, f"Username and Password are identical (likely copy-paste error): '{u}'"
+    # Commented out because Grab VB credentials actually use identical username/password with different casing (e.g. grabautof2s / Grabautof2s)
+    # if u.lower() == p.lower():
+    #     return False, f"Username and Password are identical (likely copy-paste error): '{u}'"
         
     # Check if password is too short
     if len(p) < 6:

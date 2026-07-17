@@ -124,6 +124,31 @@ def _save_history(history: dict):
 def _history_key(account_name: str, date_label: str) -> str:
     return f"{account_name}::{date_label}"
 
+def is_download_url_fresh(url: str, end_timestamp: int) -> bool:
+    """
+    Checks if the last modified time of the download URL is after the end of the requested range.
+    This prevents reusing stale/incomplete reports that were generated before the end of the range.
+    """
+    import requests
+    import email.utils
+    from datetime import datetime, timezone
+    try:
+        resp = requests.head(url, timeout=10)
+        lm_str = resp.headers.get("Last-Modified")
+        if not lm_str:
+            return False
+        lm_tuple = email.utils.parsedate_tz(lm_str)
+        if not lm_tuple:
+            return False
+        lm_dt = datetime.fromtimestamp(email.utils.mktime_tz(lm_tuple), timezone.utc)
+        end_dt_utc = datetime.fromtimestamp(end_timestamp, timezone.utc)
+        is_fresh = lm_dt >= end_dt_utc
+        log.info(f"🔍 [FRESHNESS CHECK] URL: {url.split('/')[-1]} | Last-Modified: {lm_dt} | Requested End (UTC): {end_dt_utc} | Fresh: {is_fresh}")
+        return is_fresh
+    except Exception as e:
+        log.warning(f"⚠️ Failed to check freshness for {url}: {e}")
+        return False
+
 # ─── Process Portal ─────────────────────────────────────────────────────────
 
 def process_portal(portal, global_ranges, report_dir):
@@ -194,13 +219,20 @@ def process_portal(portal, global_ranges, report_dir):
         matched_task_id = None
         for rep in existing_reports:
             rep_name = rep.get("name") or ""
-            if date_pattern in rep_name and rep.get("status") in [2, 3]:
-                matched_task_id = rep.get("id")
-                log.info(
-                    f"📂 [PORTAL - {account_name}] Reusing existing export task "
-                    f"{matched_task_id} (status {rep.get('status')}) for '{range_label}'."
-                )
-                break
+            if date_pattern in rep_name and rep.get("status") == 3:
+                download_url = rep.get("download_url")
+                if download_url and is_download_url_fresh(download_url, r["end"]):
+                    matched_task_id = rep.get("id")
+                    log.info(
+                        f"📂 [PORTAL - {account_name}] Reusing existing export task "
+                        f"{matched_task_id} (status {rep.get('status')}) for '{range_label}'."
+                    )
+                    break
+                else:
+                    log.info(
+                        f"🗑️ [PORTAL - {account_name}] Found existing completed task "
+                        f"{rep.get('id')} for '{range_label}', but it is stale. Skipping."
+                    )
 
         if not matched_task_id:
             for attempt in range(3):
@@ -318,7 +350,6 @@ def is_portal_completed(portal, global_ranges, report_dir) -> bool:
                 
         # Storage check
         safe_merchant = portal["merchant_name"].replace(" ", "_")
-        import glob
         pattern = os.path.join(report_dir, f"{safe_merchant}_*.xlsx")
         matching_files = glob.glob(pattern)
         matching_files = [f for f in matching_files if not os.path.basename(f).startswith("Master_") and not os.path.basename(f).startswith("0Master")]
@@ -427,7 +458,6 @@ def run_pipeline():
                 
                 # Delete files
                 safe_merchant = merchant_name.replace(" ", "_")
-                import glob
                 for f in glob.glob(os.path.join(report_dir, f"{safe_merchant}_*.xlsx")):
                     try: os.unlink(f)
                     except Exception as e: log.debug(f"Failed to delete {f}: {e}")
