@@ -296,24 +296,15 @@ def _resolve_shopee_merchant(outlet_name: str, branch_name: str = None, task_cho
                     .tolist()
                 )
                 if unique_merchants:
-                    if task_choice == "1":
-                        merchants_str = "|".join(unique_merchants)
+                    merchants_str = "|".join(unique_merchants)
+                    if len(unique_merchants) == 1:
+                        print(f"  {CYAN}[SHOPEE LOOKUP] Outlet '{outlet_name}'"
+                              f" → Merchant: '{unique_merchants[0]}'{RESET}")
+                    else:
                         print(f"  {CYAN}[SHOPEE LOOKUP] Outlet '{outlet_name}' punya"
                               f" {len(unique_merchants)} merchant Shopee: {unique_merchants}."
                               f" Menggunakan semuanya: '{merchants_str}'{RESET}")
-                        return merchants_str
-                    else:
-                        if len(unique_merchants) == 1:
-                            print(f"  {CYAN}[SHOPEE LOOKUP] Outlet '{outlet_name}'"
-                                  f" → Merchant: '{unique_merchants[0]}'{RESET}")
-                            return unique_merchants[0]
-                        else:
-                            # Beberapa merchant Shopee untuk outlet ini → ambil yang pertama
-                            # (biasanya semua di bawah satu akun Shopee yang sama)
-                            print(f"  {CYAN}[SHOPEE LOOKUP] Outlet '{outlet_name}' punya"
-                                  f" {len(unique_merchants)} merchant Shopee: {unique_merchants}."
-                                  f" Menggunakan: '{unique_merchants[0]}'{RESET}")
-                            return unique_merchants[0]
+                    return merchants_str
             return None
 
         result = do_lookup(df)
