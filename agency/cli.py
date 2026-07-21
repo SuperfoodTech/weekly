@@ -178,7 +178,12 @@ def _resolve_shopee_merchant(outlet_name: str, branch_name: str = None) -> str:
         if not sf_df.empty:
             unique_merchants = sf_df['Merchant Name'].apply(_clean).loc[lambda s: (s != '-') & (s != 'nan') & (s != '')].drop_duplicates().tolist()
             if unique_merchants:
-                return unique_merchants[0]
+                merchants_str = "|".join(unique_merchants)
+                if len(unique_merchants) == 1:
+                    print(f"  {CYAN}[SHOPEE LOOKUP] Outlet '{outlet_name}' → Merchant: '{unique_merchants[0]}'{RESET}")
+                else:
+                    print(f"  {CYAN}[SHOPEE LOOKUP] Outlet '{outlet_name}' punya {len(unique_merchants)} merchant Shopee: {unique_merchants}. Menggunakan semuanya: '{merchants_str}'{RESET}")
+                return merchants_str
     except Exception as e:
         print(f"  {YELLOW}[SHOPEE LOOKUP] Gagal lookup GSheets: {e}. Fallback ke nama outlet.{RESET}")
 
