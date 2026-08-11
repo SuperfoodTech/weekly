@@ -338,7 +338,9 @@ def run_pipeline():
                             'Januari': 'January', 'Februari': 'February', 'Maret': 'March', 
                             'April': 'April', 'Mei': 'May', 'Juni': 'June', 'Juli': 'July', 
                             'Agustus': 'August', 'September': 'September', 'Oktober': 'October', 
-                            'November': 'November', 'Desember': 'December'
+                            'November': 'November', 'Desember': 'December',
+                            'Ags': 'August', 'Agu': 'August', 'Agt': 'August',
+                            'Sept': 'September', 'Okt': 'October', 'Des': 'December'
                         }
                         temp_dates = df["Waktu Penyelesaian"].astype(str)
                         for indo, eng in indo_months.items():

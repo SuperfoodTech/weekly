@@ -1503,13 +1503,6 @@ def get_session(username=None, password=None, phone=None, headless=True, close_b
                     except Exception as _cookie_err:
                         log.warning(f"  ⚠️ Cookie injection on retry failed: {_cookie_err}")
 
-                # Only wipe cookies and force fresh login if the token injection also failed
-                if not is_logged_in:
-                    log.info(f"⚠️ [SESSION] Saved tokens also invalid. Forcing fresh login (Attempt {attempt+1})...")
-                    driver.delete_all_cookies()
-                    driver.get("https://partner.shopee.co.id/login")
-                    time.sleep(4)
-
             # ── Step 3: Login if all above failed ──
             if not is_logged_in:
                 log.info("⚠️ [SESSION] No active session. Navigating to login...")
@@ -1520,15 +1513,16 @@ def get_session(username=None, password=None, phone=None, headless=True, close_b
                 current_url = driver.current_url.lower()
                 if "login" in current_url or "authenticate" in current_url or "about:blank" in current_url:
                     success = _perform_login(driver, wait, username, password, phone, is_retry=(attempt == 2))
-                    if not success:
-                        log.error("❌ [AUTH] _perform_login failed.")
-                        driver.quit()
-                        continue
+                    # if not success:
+                    #     log.error("❌ [AUTH] _perform_login failed.")
+                    #     driver.quit()
+                    #     continue
                     
                 # Wait dynamically for either dashboard, onboarding, or merchant-selector URL (up to 15s)
                 log.info("  ⏳ Menunggu pengalihan halaman setelah login...")
                 redirected_ok = False
-                for _ in range(30):  # 30 * 0.5s = 15s max wait
+                for _ in range(200):
+                  # 30 * 0.5s = 15s max wait
                     curr_url = driver.current_url.lower()
                     if "onboarding" in curr_url or "merchant-selector" in curr_url or "dashboard" in curr_url:
                         redirected_ok = True

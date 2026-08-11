@@ -9,8 +9,8 @@ import requests
 import sys
 from dotenv import load_dotenv
 
-# Path to root for database manager
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+# Path to Elevate directory for database manager
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../Elevate')))
 
 # Load environment variables
 load_dotenv()
