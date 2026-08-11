@@ -711,8 +711,8 @@ def run_pipeline():
                         'Agustus': 'Aug', 'September': 'Sep', 'Oktober': 'Oct', 
                         'November': 'Nov', 'Desember': 'Dec',
                         'Jan': 'Jan', 'Feb': 'Feb', 'Mar': 'Mar', 'Apr': 'Apr',
-                        'Jun': 'Jun', 'Jul': 'Jul', 'Ags': 'Aug', 'Agu': 'Aug',
-                        'Sep': 'Sep', 'Okt': 'Oct', 'Nov': 'Nov', 'Des': 'Dec'
+                        'Jun': 'Jun', 'Jul': 'Jul', 'Ags': 'Aug', 'Agu': 'Aug', 'Agt': 'Aug',
+                        'Sep': 'Sep', 'Sept': 'Sep', 'Okt': 'Oct', 'Nov': 'Nov', 'Des': 'Dec'
                     }
                     temp_dates = df["Waktu Penyelesaian"].astype(str)
                     for indo, eng in sorted(indo_months.items(), key=lambda x: len(x[0]), reverse=True):
@@ -720,6 +720,10 @@ def run_pipeline():
                     
                     # Parse to datetime using robust explicit format
                     parsed_dates = pd.to_datetime(temp_dates, format='%d %b %Y %H:%M', errors='coerce')
+                    
+                    if parsed_dates.isna().any():
+                        failed_mask = parsed_dates.isna()
+                        parsed_dates.loc[failed_mask] = pd.to_datetime(temp_dates.loc[failed_mask], errors='coerce', dayfirst=True)
                     
                     # Where parsing succeeded, apply the new format. Where it failed, keep original.
                     df["Waktu Penyelesaian"] = parsed_dates.dt.strftime('%Y-%m-%d at %H:%M').fillna(df["Waktu Penyelesaian"])
